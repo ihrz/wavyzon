@@ -44,9 +44,9 @@ These are Cadence's settings with the `CADENCE_` prefix renamed to
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `WAVYZON_PLAYBACK_SOURCES` | `soundcloud` | Sources that metadata-only tracks (Spotify, Apple Music, Deezer) are **mirrored** to, in order of preference. See [Sources](sources.md#mirroring). A mirror target must be able to play **and** search (or look up ISRCs), so `http` and `local` don't qualify: they only play their own links. Playable plugin sources that are not listed are tried after the listed ones. |
+| `WAVYZON_PLAYBACK_SOURCES` | `deezer,soundcloud` | Sources that metadata-only tracks (Spotify, Apple Music) are **mirrored** to, in order of preference. See [Sources](sources.md#mirroring). A mirror target must be able to play **and** search (or look up ISRCs), so `http` and `local` don't qualify: they only play their own links. Playable plugin sources that are not listed are tried after the listed ones. |
 | `WAVYZON_LOCAL_ROOT` | off | Directory that the `local` source may read. Unset disables local files entirely. Paths can never escape this root. |
-| `WAVYZON_SEARCH_ORDER` | `applemusic,spotify,deezer,soundcloud` | What a plain-text `loadtracks` query (no prefix) searches, in order. The first source with results wins. |
+| `WAVYZON_SEARCH_ORDER` | `deezer,applemusic,spotify,soundcloud` | What a plain-text `loadtracks` query (no prefix) searches, in order. The first source with results wins. |
 | `WAVYZON_PREFETCH_ON_LOAD` | `true` | Preload the first result of every `loadtracks`, so "search, then play" starts from memory. |
 | `WAVYZON_HTTP_SOURCE` | `true` | Enable the HTTP source (direct audio URLs and internet radio). |
 | `WAVYZON_HTTP_ALLOW_PRIVATE` | `false` | Allow the HTTP source to fetch private, loopback, link-local and other non-public addresses. Checked on every redirect and after DNS resolution. **Leave it off** on a node that untrusted clients can reach. |
@@ -54,17 +54,21 @@ These are Cadence's settings with the `CADENCE_` prefix renamed to
 | `WAVYZON_HTTP_TIMEOUT_MS` | `10000` | HTTP source connect/response timeout (minimum 500). |
 | `WAVYZON_HTTP_PROXY` | | Proxy for the HTTP source. |
 | `SOUNDCLOUD_ENABLED` | `true` | Enable SoundCloud (search, links and playback). |
-| `DEEZER_ENABLED`, `SPOTIFY_ENABLED`, `APPLE_MUSIC_ENABLED` | `true` | Enable each metadata source. |
+| `DEEZER_ENABLED`, `SPOTIFY_ENABLED`, `APPLE_MUSIC_ENABLED` | `true` | Enable each source. |
+| `DEEZER_ARL` | | Deezer account ARL cookies (the `arl` cookie of a logged-in account), comma-separated. Needed for playback: without one Deezer is metadata only and its tracks are mirrored like Spotify's. Several ARLs are rotated. |
+| `DEEZER_ARL_ROTATION` | `failover` | How several ARLs are used: `failover` (always the first healthy account), `round-robin` or `random`. An unknown value is refused at startup. A rejected ARL is benched for 15 minutes. |
+| `DEEZER_MASTER_KEY` | | The 16-byte Blowfish master key of the `BF_CBC_STRIPE` stream cipher. Required for playback; Wavyzon does not ship one. |
+| `DEEZER_HIGH_QUALITY` | `true` | Ask for 128 kbit/s MP3 (falling back to 64) instead of 64 kbit/s only. |
 | `SOUNDCLOUD_CLIENT_ID` | scraped | Optional fixed SoundCloud client id. When unset, Wavyzon scrapes one and refreshes it when it expires. |
 | `SPOTIFY_CLIENT_ID` / `SPOTIFY_CLIENT_SECRET` | | Spotify Web API credentials (client-credentials flow). Without them Spotify links and `spsearch:` don't resolve. Metadata only. |
 | `APPLE_MUSIC_TOKEN` | scraped | Optional fixed Apple Music developer token. Metadata only. |
 | `APPLE_MUSIC_STOREFRONT` | `us` | Apple Music catalog storefront (country code). |
 | `DEEZER_PROXY`, `SPOTIFY_PROXY`, `APPLE_MUSIC_PROXY`, `SOUNDCLOUD_PROXY` | | Per-source HTTP(S) or SOCKS proxy. A proxy that fails falls back to a direct connection for 60 s. |
 
-Deezer needs no credentials: Wavyzon only uses its public catalog for
-search, links and ISRC lookups. Cadence's `DEEZER_ARL`, `DEEZER_ARL_ROTATION`,
-`DEEZER_MASTER_KEY` and `DEEZER_HIGH_QUALITY` **do not exist** in Wavyzon,
-because Wavyzon does not decrypt Deezer streams.
+Deezer search, links and ISRC lookups work with no credentials (public
+catalog). **Streaming** needs `DEEZER_ARL` (an account) and
+`DEEZER_MASTER_KEY` (the stream cipher key): without them Deezer tracks are
+mirrored to another playback source and a warning is logged at startup.
 
 ## Caching
 

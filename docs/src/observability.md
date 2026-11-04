@@ -24,9 +24,8 @@ scrape_configs:
 > front that adds `Authorization: <password>` for `/metrics`, or scrape from a
 > sidecar.
 
-Metric names follow Cadence's with the prefix `cadence_` → `wavyzon_`.
-Deezer-specific ones (`deezer_accounts_total`, `cdn_range_ignored_total`)
-and `seek_total` are gone; source counters come from `wavyzon-sources`.
+Metric names follow Cadence's with the prefix `cadence_` → `wavyzon_`;
+source counters come from `wavyzon-sources`.
 
 ### Gauges
 
@@ -54,6 +53,10 @@ and `seek_total` are gone; source counters come from `wavyzon-sources`.
 | `wavyzon_fallback_total` | `kind` = `search`, `mirror` | Answers given by a playback source other than the first one |
 | `wavyzon_mirror_total` | `outcome` = `cached`, `isrc`, `search`, `miss`, `failed` | How metadata-only tracks were mirrored |
 | `wavyzon_recommendations_total` | `outcome` = `served`, `cached`, `empty`, `failed` | Recommendation (radio) outcomes |
+| `wavyzon_deezer_recommendations_total` | `source` = `track_mix`, `artist_radio` | Where Deezer's recommendation lists came from |
+| `wavyzon_deezer_accounts_total` | `outcome` = `switched`, `rejected` | Deezer accounts rejected, and streams served by a later account |
+| `wavyzon_seek_total` | `outcome` = `range`, `fallback` | How Deezer seeks were served (a byte range, or the whole file when the layout can't be seeked) |
+| `wavyzon_cdn_range_ignored_total` | | Range requests a CDN answered with the whole file |
 | `wavyzon_host_total` | `outcome` = `started`, `ended`, `refused` | DJ voice-overs |
 | `wavyzon_peer_cache_total` | `outcome` = `index_hit`, `pulled`, `failed`, `too_busy`, `gossip_failed` | Cross-node cache outcomes |
 | `wavyzon_analysis_dropped_total` | | Analyses dropped because the queue was full |

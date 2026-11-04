@@ -126,7 +126,8 @@ Les variables principales :
 | --- | --- | --- |
 | `WAVYZON_PASSWORD` | **obligatoire** | Secret partagé |
 | `WAVYZON_ADDRESS` | `0.0.0.0:2333` | Adresse d'écoute |
-| `WAVYZON_PLAYBACK_SOURCES` | `soundcloud` | Sources vers lesquelles les pistes Spotify/Apple/Deezer sont mises en miroir |
+| `WAVYZON_PLAYBACK_SOURCES` | `deezer,soundcloud` | Sources vers lesquelles les pistes Spotify/Apple sont mises en miroir |
+| `DEEZER_ARL` + `DEEZER_MASTER_KEY` | | Activer la lecture Deezer (cookie ARL et clé de déchiffrement) |
 | `WAVYZON_HTTP_ALLOW_PRIVATE` | `false` | Laisser la source HTTP joindre des adresses privées. **Laissez à `false`** si des clients non fiables peuvent atteindre le nœud |
 | `WAVYZON_LOCAL_ROOT` | désactivé | Dossier lisible par la source de fichiers locaux |
 | `WAVYZON_PLUGINS` | tous ceux compilés | Plugins à activer (vide = tous les plugins compilés dans le binaire) |

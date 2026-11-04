@@ -71,9 +71,10 @@ team.
 ### 🔍 **Sources**
 
 - **SoundCloud** search, links and playback
+- **Deezer** search, links and playback (`DEEZER_ARL` + `DEEZER_MASTER_KEY`), Range-based seeking
 - **HTTP**: direct MP3 / AAC / M4A / FLAC / Ogg / WAV links and **Icecast / Shoutcast radio**, Range-based seeking, private addresses blocked by default
 - **Local files** (opt-in, sandboxed in `WAVYZON_LOCAL_ROOT`)
-- **Spotify, Apple Music and Deezer** links and search (metadata only), **mirrored by ISRC** to the exact recording on a playback source
+- **Spotify and Apple Music** links and search (metadata only), **mirrored by ISRC** to the exact recording on a playback source
 - Instant starts: prefetch, memory and disk caches
 
 ### 🎛️ **Filters**
@@ -140,7 +141,8 @@ and the [full reference](docs/src/configuration.md).
 | --- | --- | --- |
 | `WAVYZON_PASSWORD` | **required** | Shared secret for every request. `youshallnotpass` is refused |
 | `WAVYZON_ADDRESS` | `0.0.0.0:2333` | Listen address |
-| `WAVYZON_PLAYBACK_SOURCES` | `soundcloud` | Where Spotify / Apple Music / Deezer tracks are mirrored to, in order |
+| `WAVYZON_PLAYBACK_SOURCES` | `deezer,soundcloud` | Where Spotify / Apple Music tracks are mirrored to, in order |
+| `DEEZER_ARL` + `DEEZER_MASTER_KEY` | | Enable Deezer streaming (account ARL cookie and 16-byte stream cipher key) |
 | `WAVYZON_HTTP_ALLOW_PRIVATE` | `false` | Let the HTTP source fetch private / local addresses |
 | `WAVYZON_LOCAL_ROOT` | off | Directory the local-file source may read |
 | `WAVYZON_PLUGINS` | all compiled in | Plugins to enable, comma-separated |
@@ -174,7 +176,7 @@ The full documentation is an [mdBook](https://rust-lang.github.io/mdBook/) in
 crates/wavyzon            binary: config, REST + WebSocket (/v1, /v4), sessions, plugin host, metrics
 crates/wavyzon-player     two decks, crossfades, gapless, filters, events, the wire clock
 crates/wavyzon-voice      Discord voice gateway v8, UDP/RTP, AEAD, DAVE, the 20 ms send loop
-crates/wavyzon-sources    SoundCloud, HTTP, local, Deezer/Spotify/Apple metadata, mirroring, caches
+crates/wavyzon-sources    SoundCloud, Deezer, HTTP, local, Spotify/Apple metadata, mirroring, caches
 crates/wavyzon-analysis   tempo, key, phrases, sections, vocals, loudness fingerprints
 crates/wavyzon-audio      PCM format, DSP, Symphonia decoding, Opus encoding
 crates/wavyzon-plugin     the plugin API and shared data model

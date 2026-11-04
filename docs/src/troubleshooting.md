@@ -119,8 +119,10 @@ the voice session automatically.
 No, and there is no plan to add it in core. A plugin could add a source.
 
 **Does Wavyzon play Deezer?**
-It uses Deezer's catalog (search, links, ISRC) but plays the matching
-recording from a playback source. It does not decrypt Deezer streams.
+Yes: search, links, ISRC lookups out of the box, and full-length streams when
+`DEEZER_ARL` and `DEEZER_MASTER_KEY` are set (see
+[Configuration](configuration.md)). Without them Deezer is metadata only and
+its tracks are mirrored to a playback source.
 
 **Can I use Lavalink plugins (LavaSrc, LavaSearch…)?**
 No: they are JVM code. Wavyzon covers the common LavaSrc features

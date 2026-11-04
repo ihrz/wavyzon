@@ -44,11 +44,12 @@ to `WAVYZON_STATE_FILE` and resumed on the next start.
 
 Every Wavyzon setting the egg exposes maps 1:1 to the variables in
 `.env.example` (see `docs/src/configuration.md`). Differences from the
-Cadence egg: `CADENCE_*` became `WAVYZON_*`; the Deezer streaming variables
-(`DEEZER_ARL`, `DEEZER_MASTER_KEY`, `DEEZER_HIGH_QUALITY`) and the
-libdave/godave versions are gone; there are new variables for the playback
-sources, the HTTP and local sources, plugins, the shared cache and the log
-format (`pretty` by default, so the console stays readable).
+Cadence egg: `CADENCE_*` became `WAVYZON_*`; the libdave/godave versions are
+gone; the Deezer streaming variables are all here (`DEEZER_ARL`,
+`DEEZER_ARL_ROTATION`, `DEEZER_MASTER_KEY`, `DEEZER_HIGH_QUALITY`); and there
+are new variables for the playback sources, the HTTP and local sources,
+plugins, the shared cache and the log format (`pretty` by default, so the
+console stays readable).
 
 ## Regenerate
 

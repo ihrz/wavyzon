@@ -35,7 +35,7 @@ adds:
          │                      events                           │
          │ gateway (VOICE_STATE / VOICE_SERVER_UPDATE)           │ HTTPS
          ▼                                                       ▼
-   Discord gateway                               SoundCloud · HTTP/radio · Deezer/Spotify/Apple metadata · plugins
+   Discord gateway                               SoundCloud · Deezer · HTTP/radio · Spotify/Apple metadata · plugins
 ```
 
 1. Your bot opens a WebSocket to Wavyzon and receives a `sessionId`.

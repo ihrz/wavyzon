@@ -3,24 +3,24 @@
 A **source** turns a query or link into tracks, and, if it is *playable*,
 opens an audio stream for them. Wavyzon has two kinds:
 
-- **Playback sources** stream audio: SoundCloud, HTTP, local files, and
-  plugin sources.
-- **Metadata sources** only describe recordings: Deezer, Spotify and Apple
-  Music. Their tracks are **mirrored** to a playback source when played.
+- **Playback sources** stream audio: SoundCloud, Deezer (with an account),
+  HTTP, local files, and plugin sources.
+- **Metadata sources** only describe recordings: Spotify and Apple Music.
+  Their tracks are **mirrored** to a playback source when played.
 
 | Source | `source` name | Search prefix | Links | Plays audio |
 | --- | --- | --- | --- | --- |
 | **SoundCloud** | `soundcloud` | `scsearch:` | tracks, sets, short links (`on.soundcloud.com`) | ✅ |
+| **Deezer** | `deezer` | `dzsearch:`, `dzisrc:` | tracks, albums, playlists, artists, short links | ✅ (with `DEEZER_ARL` + `DEEZER_MASTER_KEY`) |
 | **HTTP** | `http` | | any other `http(s)://` URL: files, Icecast/Shoutcast | ✅ |
 | **Local files** | `local` | | `local:` paths under `WAVYZON_LOCAL_ROOT` | ✅ (opt-in) |
-| **Deezer** | `deezer` | `dzsearch:`, `dzisrc:` | tracks, albums, playlists, artists, short links | mirrored |
 | **Spotify** | `spotify` | `spsearch:` | tracks, albums, playlists, artists, `spotify:` URIs, short links | mirrored |
 | **Apple Music** | `applemusic` | `amsearch:` | songs, albums, playlists, artists | mirrored |
 | **Plugins** | plugin-defined | plugin-defined | plugin-defined | if the plugin implements `Playable` |
 
 Plain-text queries (no prefix, not a URL) search the sources in
-`WAVYZON_SEARCH_ORDER` (default `applemusic,spotify,deezer`) and return the
-first non-empty result.
+`WAVYZON_SEARCH_ORDER` (default `deezer,applemusic,spotify,soundcloud`) and
+return the first non-empty result.
 
 ## SoundCloud
 
@@ -84,16 +84,25 @@ source; seeking is always cheap.
 > Note: provisional. The `local:` identifier syntax and whether directories
 > load as playlists.
 
+## Deezer
+
+Search (`dzsearch:`), ISRC lookup (`dzisrc:`), links to tracks, albums,
+playlists and artists (top tracks), recommendations (`dzrec:`, the logged-in
+track mix with an account, the public artist radio without), and **full-length
+streams**.
+
+Streaming needs an account: set `DEEZER_ARL` (one or several ARL cookies) and
+`DEEZER_MASTER_KEY` (the 16-byte key of the `BF_CBC_STRIPE` stream cipher).
+Wavyzon logs in with the ARL, exchanges the track for a CDN URL and decrypts
+the stream chunk by chunk; seeks use byte ranges (Deezer serves constant
+bitrate MP3, 128 kbit/s with `DEEZER_HIGH_QUALITY`, 64 otherwise). Several
+ARLs rotate (`DEEZER_ARL_ROTATION`) and a rejected one is benched for 15
+minutes, so one expired cookie never stops playback.
+
+Without `DEEZER_ARL` or `DEEZER_MASTER_KEY`, Deezer is **metadata only** and
+its tracks are mirrored like Spotify and Apple Music ones.
+
 ## Metadata sources
-
-### Deezer
-
-Search (`dzsearch:`), ISRC lookup (`dzisrc:`), and links to tracks, albums,
-playlists and artists (top tracks), through Deezer's public API. No account
-needed.
-
-Wavyzon **does not decrypt or stream Deezer audio**. Deezer tracks are
-mirrored like Spotify and Apple Music ones.
 
 ### Spotify
 

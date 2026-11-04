@@ -32,26 +32,32 @@ sed -i 's/^CADENCE_/WAVYZON_/' .env
 | `CADENCE_ADDRESS` | `WAVYZON_ADDRESS` |
 | `CADENCE_BUFFER_MS`, `_BITRATE`, `_PLAYOUT_DELAY_MS`, `_PAUSE_FADE_MS`, `_RESUME_TIMEOUT_SECONDS`, `_UPDATE_INTERVAL_MS`, `_SEARCH_ORDER`, `_ANALYSIS_WORKERS`, `_ANALYSIS_QUEUE`, `_LOG_LEVEL`, `_AUDIO_CACHE_DIR`, `_AUDIO_CACHE_GB`, `_NORMALIZE`, `_NORMALIZE_LUFS`, `_STATE_FILE`, `_CACHE_PEERS`, `_CACHE_SECRET` | same names with `WAVYZON_` |
 | `CADENCE_ALLOW_NO_VOICE` | `WAVYZON_ALLOW_NO_VOICE` (every regular build has voice; this only matters for a build without the `opus`/`dave` features) |
-| `SPOTIFY_*`, `APPLE_MUSIC_*`, `SOUNDCLOUD_*`, `*_PROXY` | unchanged |
+| `SPOTIFY_*`, `APPLE_MUSIC_*`, `SOUNDCLOUD_*`, `DEEZER_*`, `*_PROXY` | unchanged |
 
 > Note: provisional. Whether the source credentials (`SPOTIFY_*`,
 > `APPLE_MUSIC_*`, `SOUNDCLOUD_*`) also get a `WAVYZON_` prefix.
 
-### Deezer is metadata only
+### Deezer streaming
 
 Cadence played Deezer streams (with `DEEZER_ARL` and `DEEZER_MASTER_KEY`) and
-used SoundCloud as a fallback. Wavyzon does **not** decrypt Deezer: Deezer is
-a metadata source like Spotify and Apple Music, and its tracks are mirrored
-to `WAVYZON_PLAYBACK_SOURCES`.
+used SoundCloud as a fallback. Wavyzon ports that: `DEEZER_ARL`,
+`DEEZER_ARL_ROTATION`, `DEEZER_MASTER_KEY` and `DEEZER_HIGH_QUALITY` work
+unchanged (same gw login, same `BF_CBC_STRIPE` decryption, same account
+rotation and benching, same range seeks).
 
-- Remove `DEEZER_ARL`, `DEEZER_ARL_ROTATION`, `DEEZER_MASTER_KEY`,
-  `DEEZER_HIGH_QUALITY`.
-- Set `WAVYZON_PLAYBACK_SOURCES` (e.g. `soundcloud`).
-- Stored Deezer tracks still decode and play: they are mirrored on play.
-- Metrics that were Deezer-specific (`cadence_deezer_accounts_total`,
-  `cadence_cdn_range_ignored_total`) and `cadence_seek_total` are gone;
-  `wavyzon_fallback_total` now counts playback-source fallbacks, and
-  `wavyzon_mirror_total` is new. See [Observability](../observability.md).
+- The defaults changed: `WAVYZON_PLAYBACK_SOURCES` is `deezer,soundcloud` and
+  `WAVYZON_SEARCH_ORDER` starts with `deezer`, so everything plays through
+  Deezer when it can.
+- Without `DEEZER_ARL`/`DEEZER_MASTER_KEY`, Deezer stays metadata only and
+  its tracks are mirrored to `WAVYZON_PLAYBACK_SOURCES` (with a startup
+  warning), which Cadence could not do.
+- The Deezer metrics are renamed: `cadence_deezer_accounts_total` →
+  `wavyzon_deezer_accounts_total`, `cadence_cdn_range_ignored_total` →
+  `wavyzon_cdn_range_ignored_total`, `cadence_seek_total` →
+  `wavyzon_seek_total` (outcomes `range`/`fallback`; seeks into a
+  disk-cached track are served from disk). `wavyzon_fallback_total` counts
+  playback-source fallbacks and `wavyzon_mirror_total` is new. See
+  [Observability](../observability.md).
 
 ### New things
 
@@ -121,7 +127,7 @@ Check that this fits your use before migrating.
 ## Checklist
 
 - [ ] Rename `CADENCE_*` → `WAVYZON_*`.
-- [ ] Remove Deezer streaming variables; set `WAVYZON_PLAYBACK_SOURCES`.
+- [ ] Keep `DEEZER_ARL` + `DEEZER_MASTER_KEY` (same variables and meaning).
 - [ ] Rebuild or pull the Wavyzon image.
 - [ ] If you use v4 extras, switch to `wavyzonEvents` (optional).
 - [ ] Update dashboards to `wavyzon_*` metrics.

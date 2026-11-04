@@ -34,8 +34,9 @@ crates/
                       filters + glides, reverb, loudness, plugin filter chain, events,
                       wire clock
   wavyzon-voice/      Discord voice gateway v8, UDP/RTP, AEAD, DAVE (davey), 20 ms send loop
-  wavyzon-sources/    SoundCloud, HTTP, local, Deezer/Spotify/Apple Music (metadata only),
-                      resolver, ISRC mirroring + match scoring, caches, httpx client
+  wavyzon-sources/    SoundCloud, Deezer (ARL + BF_CBC_STRIPE streaming), HTTP,
+                      local, Spotify/Apple Music (metadata only), resolver,
+                      ISRC mirroring + match scoring, caches, httpx client
   wavyzon-analysis/   tempo/beats/key/phrases/loudness fingerprints, offline queue
   wavyzon-audio/      PCM format (48 kHz stereo, 20 ms i16 frames), DSP blocks
                       (biquad, sinc resampler, WSOLA stretcher, crossfade), symphonia
@@ -134,9 +135,15 @@ peer index read; 0700 state dir; mirror fallback miss caching.
 
 - `CADENCE_*` → `WAVYZON_*`, `cadence_*` metrics → `wavyzon_*` (`cadenceEvents`
   is still accepted as an alias of `wavyzonEvents`).
-- **Deezer is metadata only**: no ARL, decryption or streaming. Deezer, Spotify
-  and Apple Music tracks are mirrored by ISRC/title to
-  `WAVYZON_PLAYBACK_SOURCES` (default `soundcloud`).
+- **Deezer streams** (ARL login, media URLs, `BF_CBC_STRIPE` decryption, range
+  seeks, account rotation: all ported from Cadence), but without
+  `DEEZER_ARL`/`DEEZER_MASTER_KEY` it degrades to metadata-only mirroring
+  instead of refusing to play. Cadence's Deezer-only head/disk caches are
+  generalized in the resolver for every source (so there is no
+  `head.go`/`diskCache.go` port). Defaults favour Deezer:
+  `WAVYZON_PLAYBACK_SOURCES` = `deezer,soundcloud` and `WAVYZON_SEARCH_ORDER`
+  starts with `deezer`; Deezer, Spotify and Apple Music tracks are mirrored by
+  ISRC/title to `WAVYZON_PLAYBACK_SOURCES` when they cannot play.
 - New: HTTP and local sources, plugins, `pluginFilters` (an unknown or
   rejected plugin filter is a documented `400`), `closeReason` on `/v1`
   `WebSocketClosedEvent`.

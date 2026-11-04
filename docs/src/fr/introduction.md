@@ -38,7 +38,7 @@ grandes idées, l'[horloge de transmission](../wire-clock.md) et le
          │                     événements                        │
          │ passerelle (VOICE_STATE / VOICE_SERVER_UPDATE)        │ HTTPS
          ▼                                                       ▼
-   passerelle Discord                         SoundCloud · HTTP/radio · métadonnées Deezer/Spotify/Apple · plugins
+   passerelle Discord                   SoundCloud · Deezer · HTTP/radio · métadonnées Spotify/Apple · plugins
 ```
 
 1. Votre bot ouvre un WebSocket vers Wavyzon et reçoit un `sessionId`.

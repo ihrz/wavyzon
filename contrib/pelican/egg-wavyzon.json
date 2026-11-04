@@ -51,7 +51,7 @@
                 "string",
                 "max:10"
             ],
-            "sort": 31
+            "sort": 35
         },
         {
             "name": "Bitrate Opus par d\u00e9faut",
@@ -110,8 +110,22 @@
             "sort": 22
         },
         {
+            "name": "Cl\u00e9 ma\u00eetre Deezer",
+            "description": "Cl\u00e9 Blowfish de 16 octets pour d\u00e9chiffrer les flux Deezer. N\u00e9cessaire \u00e0 la lecture.",
+            "env_variable": "DEEZER_MASTER_KEY",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "nullable",
+                "string",
+                "max:64"
+            ],
+            "sort": 31
+        },
+        {
             "name": "Deezer activ\u00e9",
-            "description": "Recherche et liens Deezer (m\u00e9tadonn\u00e9es uniquement, la lecture passe par les sources de lecture).",
+            "description": "Recherche, liens et lecture Deezer.",
             "env_variable": "DEEZER_ENABLED",
             "default_value": "true",
             "user_viewable": true,
@@ -122,6 +136,34 @@
                 "in:true,false"
             ],
             "sort": 28
+        },
+        {
+            "name": "Deezer ARL",
+            "description": "Cookies ARL de comptes Deezer, s\u00e9par\u00e9s par des virgules. N\u00e9cessaire \u00e0 la lecture ; sans eux Deezer reste m\u00e9tadonn\u00e9es.",
+            "env_variable": "DEEZER_ARL",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "nullable",
+                "string",
+                "max:500"
+            ],
+            "sort": 29
+        },
+        {
+            "name": "Deezer haute qualit\u00e9",
+            "description": "Demander du MP3 128 kbit/s (avec repli 64) au lieu de 64 seul.",
+            "env_variable": "DEEZER_HIGH_QUALITY",
+            "default_value": "true",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "required",
+                "string",
+                "in:true,false"
+            ],
+            "sort": 32
         },
         {
             "name": "Dossier cache audio",
@@ -322,9 +364,9 @@
         },
         {
             "name": "Ordre de recherche",
-            "description": "Sources interrog\u00e9es pour une recherche texte, dans l'ordre (Deezer, Spotify et Apple Music = m\u00e9tadonn\u00e9es).",
+            "description": "Sources interrog\u00e9es pour une recherche texte, dans l'ordre.",
             "env_variable": "WAVYZON_SEARCH_ORDER",
-            "default_value": "applemusic,spotify,deezer,soundcloud",
+            "default_value": "deezer,applemusic,spotify,soundcloud",
             "user_viewable": true,
             "user_editable": true,
             "rules": [
@@ -346,7 +388,7 @@
                 "string",
                 "max:500"
             ],
-            "sort": 33
+            "sort": 37
         },
         {
             "name": "Playout delay (ms)",
@@ -391,6 +433,20 @@
             "sort": 16
         },
         {
+            "name": "Rotation des ARL",
+            "description": "failover, round-robin ou random quand plusieurs ARL sont configur\u00e9s.",
+            "env_variable": "DEEZER_ARL_ROTATION",
+            "default_value": "failover",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "required",
+                "string",
+                "in:failover,round-robin,random"
+            ],
+            "sort": 30
+        },
+        {
             "name": "Secret du cache partag\u00e9",
             "description": "Secret identique sur tous les n\u0153uds, exig\u00e9 pour WAVYZON_CACHE_PEERS.",
             "env_variable": "WAVYZON_CACHE_SECRET",
@@ -402,7 +458,7 @@
                 "string",
                 "max:200"
             ],
-            "sort": 34
+            "sort": 38
         },
         {
             "name": "SoundCloud activ\u00e9",
@@ -416,7 +472,7 @@
                 "string",
                 "in:true,false"
             ],
-            "sort": 32
+            "sort": 36
         },
         {
             "name": "Source HTTP",
@@ -434,9 +490,9 @@
         },
         {
             "name": "Sources de lecture",
-            "description": "Sources qui jouent vraiment l'audio ; les pistes Deezer/Spotify/Apple Music y sont retrouv\u00e9es par ISRC.",
+            "description": "Sources qui jouent vraiment l'audio ; les pistes Spotify/Apple Music y sont retrouv\u00e9es par ISRC.",
             "env_variable": "WAVYZON_PLAYBACK_SOURCES",
-            "default_value": "soundcloud",
+            "default_value": "deezer,soundcloud",
             "user_viewable": true,
             "user_editable": true,
             "rules": [
@@ -458,7 +514,7 @@
                 "string",
                 "max:100"
             ],
-            "sort": 29
+            "sort": 33
         },
         {
             "name": "Spotify Client Secret",
@@ -472,7 +528,7 @@
                 "string",
                 "max:100"
             ],
-            "sort": 30
+            "sort": 34
         },
         {
             "name": "Taille cache audio (Go)",

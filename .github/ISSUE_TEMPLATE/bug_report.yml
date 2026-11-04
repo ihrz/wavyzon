@@ -15,7 +15,7 @@ body:
       options:
         - Voice (joining, silence, disconnects, DAVE)
         - Playback and mixing (crossfades, seeking, filters)
-        - Sources (SoundCloud, HTTP / Icecast, local files, Deezer / Spotify / Apple Music metadata)
+        - Sources (SoundCloud, Deezer, HTTP / Icecast, local files, Spotify / Apple Music metadata)
         - Timing (positions, TrackAudibleEvent, lyrics sync)
         - API and sessions (REST, WebSocket, resume)
         - Plugins (plugin API, a built-in plugin)

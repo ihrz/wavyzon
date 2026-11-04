@@ -24,7 +24,7 @@ Lavalink's `application.yml` becomes environment variables:
 | `lavalink.server.ratelimit` (route planner) | not available; use `*_PROXY` per source |
 | LavaSrc `spotify.clientId/clientSecret` | `SPOTIFY_CLIENT_ID` / `SPOTIFY_CLIENT_SECRET` |
 | LavaSrc `applemusic.mediaAPIToken`, `countryCode` | `APPLE_MUSIC_TOKEN`, `APPLE_MUSIC_STOREFRONT` |
-| LavaSrc `deezer.*` | Deezer metadata needs nothing; Wavyzon does not stream Deezer |
+| LavaSrc `deezer.arl`, `deezer.masterDecryptionKey` | `DEEZER_ARL`, `DEEZER_MASTER_KEY` (Deezer metadata needs nothing) |
 | LavaSrc `providers` (mirroring queries) | `WAVYZON_PLAYBACK_SOURCES` (ISRC first, then scored search) |
 | `logging.level.*` | `WAVYZON_LOG_LEVEL` / `RUST_LOG` |
 | `metrics.prometheus.enabled` | always on at `/metrics` (authenticated) |
