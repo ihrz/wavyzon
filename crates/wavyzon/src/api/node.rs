@@ -111,6 +111,7 @@ pub fn render_metrics(api: &Api) -> String {
                 Some((_, _, v)) => v.push((value, s.value)),
                 None => labeled.push((s.metric, label, vec![(value, s.value)])),
             },
+            None if s.metric.ends_with("_total") => e.counter(s.metric, &source_help(s.metric), s.value as f64),
             None => e.gauge(s.metric, &source_help(s.metric), s.value as f64),
         }
     }
@@ -135,6 +136,10 @@ fn source_help(metric: &str) -> String {
         "audio_cache_total" => "Disk audio cache outcomes.",
         "mirror_total" => "How metadata-only tracks were mirrored to a playable source.",
         "recommendations_total" => "Recommendation (radio) outcomes.",
+        "deezer_recommendations_total" => "Where Deezer recommendation lists came from.",
+        "deezer_accounts_total" => "Deezer accounts rejected, and streams served by a later account.",
+        "seek_total" => "How Deezer seeks were served.",
+        "cdn_range_ignored_total" => "Range requests the CDN answered with the whole file.",
         "audio_cache_bytes" => "Bytes of audio held in the disk cache.",
         "audio_cache_files" => "Tracks held in the disk cache.",
         _ => "Source counter.",

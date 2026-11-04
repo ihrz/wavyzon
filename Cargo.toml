@@ -58,6 +58,9 @@ audiopus = "0.3.0-rc.0"
 
 # crypto / voice
 aes-gcm = "0.10"
+# Deezer "BF_CBC_STRIPE" stream decryption (track key = md5, chunks = Blowfish)
+md-5 = "0.10"
+blowfish = "0.9"
 chacha20poly1305 = "0.10"
 davey = "0.2"
 # test-only: plays Discord's DAVE external sender in wavyzon-voice tests

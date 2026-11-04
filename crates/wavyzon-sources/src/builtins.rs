@@ -27,6 +27,8 @@ pub enum BuildError {
     AudioCache(#[from] CacheError),
     #[error("local source root: {0}")]
     LocalRoot(std::io::Error),
+    #[error("deezer: {0}")]
+    Deezer(#[from] crate::deezer::SetupError),
 }
 
 fn client(name: &'static str, proxy: &Option<String>) -> Result<Arc<HttpClient>, BuildError> {
@@ -54,10 +56,19 @@ impl Sources {
             b = b.builtin(Arc::new(sc));
         }
         if cfg.deezer.enabled {
-            b = b.builtin(Arc::new(Deezer::new(
+            let setup = crate::deezer::Setup {
+                arls: cfg.deezer.arl.clone(),
+                rotation: cfg.deezer.arl_rotation.clone(),
+                master_key: Some(cfg.deezer.master_key.clone()).filter(|k| !k.is_empty()),
+                high_quality: cfg.deezer.high_quality,
+            };
+            let dz = Deezer::new(
                 client(crate::deezer::NAME, &cfg.deezer.proxy)?,
-                &cfg.deezer.api_base,
-            )));
+                cfg.deezer.endpoints.clone(),
+                setup,
+                b.metrics_handle(),
+            )?;
+            b = b.builtin(Arc::new(dz));
         }
         if cfg.spotify.enabled {
             let sp = Spotify::new(
@@ -120,7 +131,7 @@ mod tests {
             s.names(),
             ["soundcloud", "deezer", "spotify", "applemusic", "local", "http"]
         );
-        assert_eq!(s.playback_names(), ["soundcloud"]);
+        assert_eq!(s.playback_names(), ["soundcloud"], "deezer is metadata-only here");
         assert!(s.audio_cache().is_some());
         let bad = SourcesConfig {
             local: crate::config::LocalConfig {
@@ -129,5 +140,44 @@ mod tests {
             ..Default::default()
         };
         assert!(matches!(Sources::builder(&bad), Err(BuildError::LocalRoot(_))));
+    }
+
+    #[tokio::test]
+    async fn deezer_streams_when_the_credentials_are_set() {
+        let cfg = SourcesConfig {
+            deezer: crate::config::DeezerConfig {
+                arl: vec!["an-arl".into()],
+                master_key: "0123456789abcdef".into(),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let s = Sources::builder(&cfg).unwrap().build();
+        assert_eq!(
+            s.playback_names(),
+            ["deezer", "soundcloud"],
+            "Deezer plays its own tracks first"
+        );
+        assert!(s.source("deezer").unwrap().playable().is_some());
+    }
+
+    #[tokio::test]
+    async fn a_bad_rotation_or_master_key_fails_the_build() {
+        let rotation = SourcesConfig {
+            deezer: crate::config::DeezerConfig {
+                arl_rotation: "sticky".into(),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        assert!(matches!(Sources::builder(&rotation), Err(BuildError::Deezer(_))));
+        let key = SourcesConfig {
+            deezer: crate::config::DeezerConfig {
+                master_key: "short".into(),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        assert!(matches!(Sources::builder(&key), Err(BuildError::Deezer(_))));
     }
 }

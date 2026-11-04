@@ -2,8 +2,9 @@
 //!
 //! Names follow Cadence's `/metrics`: `prefetch_total{outcome}`,
 //! `fallback_total{kind}`, `audio_cache_total{outcome}`, `audio_cache_bytes`,
-//! `audio_cache_files`, plus Wavyzon's `mirror_total{outcome}` and
-//! `recommendations_total{outcome}`.
+//! `audio_cache_files`, `deezer_accounts_total{outcome}`, `seek_total{outcome}`
+//! and `cdn_range_ignored_total`, plus Wavyzon's `mirror_total{outcome}`,
+//! `recommendations_total{outcome}` and `deezer_recommendations_total{source}`.
 
 use std::sync::atomic::{AtomicI64, AtomicU64, Ordering};
 
@@ -49,6 +50,18 @@ counters!(
     /// Recommendation (radio) outcomes.
     RecommendCounters, "recommendations_total", "outcome" { served, cached, empty, failed }
 );
+counters!(
+    /// Deezer accounts rejected, and streams served by a later account.
+    DeezerAccountCounters, "deezer_accounts_total", "outcome" { switched, rejected }
+);
+counters!(
+    /// How Deezer seeks were served.
+    SeekCounters, "seek_total", "outcome" { range, fallback }
+);
+counters!(
+    /// Where Deezer recommendation lists came from.
+    DeezerMixCounters, "deezer_recommendations_total", "source" { track_mix, artist_radio }
+);
 
 /// All counters of a [`crate::Sources`].
 #[derive(Debug, Default)]
@@ -58,6 +71,14 @@ pub struct Metrics {
     pub audio_cache: AudioCacheCounters,
     pub mirror: MirrorCounters,
     pub recommend: RecommendCounters,
+    /// Deezer account walks (stream requests that switched or benched).
+    pub deezer_accounts: DeezerAccountCounters,
+    /// Deezer range seeks (served by a range, or streamed from the start).
+    pub seek: SeekCounters,
+    /// Where Deezer's recommendation lists came from.
+    pub deezer_recommend: DeezerMixCounters,
+    /// Range requests a CDN answered with the whole file.
+    pub cdn_range_ignored: AtomicU64,
     /// Bytes currently stored in the disk audio cache.
     pub audio_cache_bytes: AtomicI64,
     /// Files currently stored in the disk audio cache.
@@ -107,6 +128,22 @@ impl Metrics {
             RecommendCounters::LABEL,
             self.recommend.snapshot(),
         );
+        push(
+            DeezerAccountCounters::METRIC,
+            DeezerAccountCounters::LABEL,
+            self.deezer_accounts.snapshot(),
+        );
+        push(SeekCounters::METRIC, SeekCounters::LABEL, self.seek.snapshot());
+        push(
+            DeezerMixCounters::METRIC,
+            DeezerMixCounters::LABEL,
+            self.deezer_recommend.snapshot(),
+        );
+        out.push(Sample {
+            metric: "cdn_range_ignored_total",
+            label: None,
+            value: self.cdn_range_ignored.load(Ordering::Relaxed) as i64,
+        });
         out.push(Sample {
             metric: "audio_cache_bytes",
             label: None,

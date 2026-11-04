@@ -512,7 +512,9 @@ pub fn literal_is_private(url: &Url) -> bool {
     }
 }
 
-async fn read_limited(mut res: Response, limit: usize, url: &str) -> Result<Bytes, HttpError> {
+/// Read a whole response body into memory, refusing anything past `limit`
+/// (`url` is already redacted for error messages).
+pub(crate) async fn read_limited(mut res: Response, limit: usize, url: &str) -> Result<Bytes, HttpError> {
     let mut buf = BytesMut::new();
     loop {
         match res.chunk().await {

@@ -5,8 +5,8 @@
 //!
 //! | Source | Prefix | Links | Audio |
 //! | --- | --- | --- | --- |
-//! | [`soundcloud`] | `scsearch:` | tracks, sets, short links | ✅ (default mirror target) |
-//! | [`deezer`] | `dzsearch:` / `dzisrc:` / `dzrec:` | tracks, albums, playlists, artists, short links | metadata, mirrored |
+//! | [`soundcloud`] | `scsearch:` | tracks, sets, short links | ✅ (mirror target) |
+//! | [`deezer`] | `dzsearch:` / `dzisrc:` / `dzrec:` | tracks, albums, playlists, artists, short links | ✅ with `DEEZER_ARL` + `DEEZER_MASTER_KEY`, else mirrored |
 //! | [`spotify`] | `spsearch:` | tracks, albums, playlists, `spotify:` URIs, short links | metadata, mirrored |
 //! | [`applemusic`] | `amsearch:` | songs, albums, playlists, artists | metadata, mirrored |
 //! | [`http_source`] | — | any other `http(s)://` file or Icecast/Shoutcast stream | ✅ |
@@ -17,9 +17,11 @@
 //! [`Sources::playable`], [`Sources::open`], [`Sources::prefetch`] and
 //! [`Sources::recommend`]. Counters live in [`Metrics`].
 //!
-//! Ported from Cadence (Go). Unlike Cadence, Deezer is metadata-only here:
-//! account login, media URLs and stream decryption are intentionally not
-//! implemented.
+//! Ported from Cadence (Go), including Deezer streaming: the `DEEZER_ARL`
+//! login, media URLs, `BF_CBC_STRIPE` decryption and range seeks. Wavyzon
+//! generalizes Cadence's per-Deezer head/disk caches to every source in the
+//! resolver, and keeps Deezer metadata-only (mirroring the tracks instead)
+//! when no ARL or master key is configured.
 
 pub mod applemusic;
 pub mod audiocache;

@@ -15,23 +15,48 @@ fn list(raw: &str) -> Vec<String> {
         .collect()
 }
 
-/// Deezer public catalog.
+/// Comma-separated values, trimmed but *not* lowercased: ARLs are
+/// case-sensitive secrets.
+fn secrets(raw: &str) -> Vec<String> {
+    raw.split(',')
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect()
+}
+
+/// Deezer catalog and streaming.
 #[derive(Debug, Clone)]
 pub struct DeezerConfig {
     /// `DEEZER_ENABLED` (default `true`).
     pub enabled: bool,
+    /// `DEEZER_ARL`: one or several account ARLs (comma-separated). Without
+    /// one the source is metadata only.
+    pub arl: Vec<String>,
+    /// `DEEZER_ARL_ROTATION` (`failover`, `round-robin`, `random`; anything
+    /// else fails the build so a typo cannot silently change behaviour).
+    pub arl_rotation: String,
+    /// `DEEZER_MASTER_KEY`: the 16-byte Blowfish master key of the `stripe`
+    /// cipher. Without it nothing can be decrypted, so nothing plays.
+    pub master_key: String,
+    /// `DEEZER_HIGH_QUALITY` (default `true`): ask for `MP3_128` before
+    /// falling back to `MP3_64`.
+    pub high_quality: bool,
     /// `DEEZER_PROXY`.
     pub proxy: Option<String>,
-    /// API base (tests); default `https://api.deezer.com/2.0`.
-    pub api_base: String,
+    /// Endpoints (tests); defaults to the real Deezer services.
+    pub endpoints: crate::deezer::Endpoints,
 }
 
 impl Default for DeezerConfig {
     fn default() -> Self {
         Self {
             enabled: true,
+            arl: Vec::new(),
+            arl_rotation: String::new(),
+            master_key: String::new(),
+            high_quality: true,
             proxy: None,
-            api_base: "https://api.deezer.com/2.0".into(),
+            endpoints: crate::deezer::Endpoints::default(),
         }
     }
 }
@@ -123,13 +148,14 @@ pub struct LocalConfig {
 /// Configuration of every built-in source and of the resolver.
 #[derive(Debug, Clone)]
 pub struct SourcesConfig {
-    /// `WAVYZON_SEARCH_ORDER` (default `applemusic,spotify,deezer,soundcloud`):
+    /// `WAVYZON_SEARCH_ORDER` (default `deezer,applemusic,spotify,soundcloud`):
     /// sources queried, in order, for plain-text searches (first non-empty
     /// answer wins).
     pub search_order: Vec<String>,
-    /// `WAVYZON_PLAYBACK_SOURCES` (alias `WAVYZON_PLAYBACK_ORDER`; default `soundcloud`): playable sources that
-    /// metadata-only tracks are mirrored to, in order of preference. Playable
-    /// plugin sources not listed are appended after these.
+    /// `WAVYZON_PLAYBACK_SOURCES` (alias `WAVYZON_PLAYBACK_ORDER`; default
+    /// `deezer,soundcloud`): playable sources that metadata-only tracks are
+    /// mirrored to, in order of preference. Playable plugin sources not
+    /// listed are appended after these.
     pub playback_order: Vec<String>,
     /// `WAVYZON_AUDIO_CACHE_DIR`: disk cache of repeat-played tracks. Unset
     /// disables it.
@@ -153,8 +179,8 @@ pub struct SourcesConfig {
 impl Default for SourcesConfig {
     fn default() -> Self {
         Self {
-            search_order: list("applemusic,spotify,deezer,soundcloud"),
-            playback_order: list("soundcloud"),
+            search_order: list("deezer,applemusic,spotify,soundcloud"),
+            playback_order: list("deezer,soundcloud"),
             audio_cache_dir: None,
             audio_cache_gb: 20,
             prefetch_on_load: true,
@@ -200,6 +226,10 @@ impl SourcesConfig {
         c.audio_cache_gb = num("WAVYZON_AUDIO_CACHE_GB", 20).clamp(1, 1000);
         c.prefetch_on_load = flag("WAVYZON_PREFETCH_ON_LOAD", true);
         c.deezer.enabled = flag("DEEZER_ENABLED", true);
+        c.deezer.arl = secrets(&s("DEEZER_ARL").unwrap_or_default());
+        c.deezer.arl_rotation = s("DEEZER_ARL_ROTATION").unwrap_or_default();
+        c.deezer.master_key = s("DEEZER_MASTER_KEY").unwrap_or_default();
+        c.deezer.high_quality = flag("DEEZER_HIGH_QUALITY", true);
         c.deezer.proxy = s("DEEZER_PROXY");
         c.spotify.enabled = flag("SPOTIFY_ENABLED", true);
         c.spotify.client_id = s("SPOTIFY_CLIENT_ID").unwrap_or_default();
@@ -234,11 +264,27 @@ impl SourcesConfig {
     /// Human-readable warnings about the configuration (missing credentials…).
     pub fn warnings(&self) -> Vec<String> {
         let mut out = Vec::new();
+        if self.deezer.enabled && self.deezer.arl.is_empty() {
+            out.push("DEEZER_ARL is not set: search works, full-length playback does not".into());
+        }
+        if self.deezer.enabled && self.deezer.master_key.is_empty() {
+            out.push("DEEZER_MASTER_KEY is not set: Deezer streams cannot be decrypted, so nothing will play".into());
+        }
         if self.spotify.enabled && (self.spotify.client_id.is_empty() || self.spotify.client_secret.is_empty()) {
             out.push("SPOTIFY_CLIENT_ID/SECRET are not set: Spotify links will not resolve".into());
         }
-        if !self.soundcloud.enabled && self.playback_order.iter().all(|p| p == "soundcloud") {
-            out.push("SoundCloud is disabled and no other playback source is configured: only http/local tracks and plugin sources can play".into());
+        // A configured playback source that cannot actually play (as far as
+        // this config knows; plugin sources may still cover it).
+        let deezer_plays = self.deezer.enabled && !self.deezer.arl.is_empty() && !self.deezer.master_key.is_empty();
+        let plays = |name: &str| match name {
+            "soundcloud" => self.soundcloud.enabled,
+            "deezer" => deezer_plays,
+            "http" => self.http.enabled,
+            "local" => self.local.root.is_some(),
+            _ => true,
+        };
+        if !self.playback_order.iter().any(|p| plays(p)) {
+            out.push("no playback source is usable: only http/local tracks and plugin sources can play".into());
         }
         out
     }
@@ -260,8 +306,8 @@ mod tests {
     #[test]
     fn defaults_and_env() {
         let d = SourcesConfig::default();
-        assert_eq!(d.search_order, ["applemusic", "spotify", "deezer", "soundcloud"]);
-        assert_eq!(d.playback_order, ["soundcloud"]);
+        assert_eq!(d.search_order, ["deezer", "applemusic", "spotify", "soundcloud"]);
+        assert_eq!(d.playback_order, ["deezer", "soundcloud"]);
         assert!(d.http.block_private);
         let env: HashMap<&str, &str> = [
             ("WAVYZON_SEARCH_ORDER", "Deezer, soundcloud"),
@@ -290,5 +336,44 @@ mod tests {
         assert!(!c.http.block_private);
         assert!(!c.http.enabled);
         assert_eq!(c.playback_order, ["tone"]);
+    }
+
+    #[test]
+    fn deezer_streaming_config() {
+        let env: HashMap<&str, &str> = [
+            ("DEEZER_ARL", " FirstARL , ,second-arl"),
+            ("DEEZER_ARL_ROTATION", "round-robin"),
+            ("DEEZER_MASTER_KEY", "0123456789abcdef"),
+            ("DEEZER_HIGH_QUALITY", "false"),
+        ]
+        .into();
+        let c = SourcesConfig::from_lookup(|k| env.get(k).map(|v| v.to_string()));
+        // ARLs are secrets: trimmed, never lowercased.
+        assert_eq!(c.deezer.arl, ["FirstARL", "second-arl"]);
+        assert_eq!(c.deezer.arl_rotation, "round-robin");
+        assert_eq!(c.deezer.master_key, "0123456789abcdef");
+        assert!(!c.deezer.high_quality);
+        assert!(
+            !c.warnings().iter().any(|w| w.starts_with("DEEZER")),
+            "{:?}",
+            c.warnings()
+        );
+        let missing = SourcesConfig::default();
+        let w = missing.warnings();
+        assert!(w.iter().any(|w| w.starts_with("DEEZER_ARL")), "{w:?}");
+        assert!(w.iter().any(|w| w.starts_with("DEEZER_MASTER_KEY")), "{w:?}");
+    }
+
+    #[test]
+    fn warns_when_no_playback_source_can_play() {
+        let env: HashMap<&str, &str> = [
+            ("SOUNDCLOUD_ENABLED", "0"),
+            ("DEEZER_ENABLED", "1"),
+            ("DEEZER_ARL", "arl"),
+        ]
+        .into();
+        let c = SourcesConfig::from_lookup(|k| env.get(k).map(|v| v.to_string()));
+        let w = c.warnings();
+        assert!(w.iter().any(|w| w.contains("playback source")), "{w:?}");
     }
 }

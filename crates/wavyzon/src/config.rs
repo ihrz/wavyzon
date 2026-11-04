@@ -221,9 +221,9 @@ mod tests {
         assert!(!c.allow_no_voice);
         assert_eq!(
             c.sources.search_order,
-            ["applemusic", "spotify", "deezer", "soundcloud"]
+            ["deezer", "applemusic", "spotify", "soundcloud"]
         );
-        assert_eq!(c.sources.playback_order, ["soundcloud"]);
+        assert_eq!(c.sources.playback_order, ["deezer", "soundcloud"]);
         assert!(c.sources.http.enabled && c.sources.http.block_private);
         assert!(c.sources.audio_cache_dir.is_none());
         assert_eq!(c.sources.audio_cache_gb, 20);
