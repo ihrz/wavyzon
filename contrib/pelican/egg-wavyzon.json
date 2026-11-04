@@ -1,0 +1,520 @@
+{
+    "_comment": "DO NOT EDIT: FILE GENERATED AUTOMATICALLY BY PANEL",
+    "meta": {
+        "version": "PLCN_v3",
+        "update_url": null
+    },
+    "exported_at": "2026-11-04T09:00:00+00:00",
+    "name": "Wavyzon",
+    "author": "admin@example.com",
+    "uuid": "2f931315-ec75-55db-afd6-2d2d8fc745f9",
+    "description": "Wavyzon : n\u0153ud audio standalone pour bots Discord (Rust), r\u00e9\u00e9criture de Cadence. Timing \u00e0 la trame pr\u00e8s (wire clock), mixage deux decks, DAVE E2EE en Rust pur et compatibilit\u00e9 Lavalink v4. Compil\u00e9 depuis https://gitlab.com/ihrz/wavyzon \u00e0 l'installation.",
+    "icon": null,
+    "tags": [
+        "audio",
+        "discord",
+        "rust",
+        "lavalink"
+    ],
+    "features": [],
+    "docker_images": {
+        "Debian": "ghcr.io/pelican-eggs/yolks:debian",
+        "Ubuntu": "ghcr.io/pelican-eggs/yolks:ubuntu"
+    },
+    "file_denylist": [],
+    "startup_commands": {
+        "Default": "bash ./start.sh"
+    },
+    "config": {
+        "files": "{}",
+        "startup": "{\n    \"done\": \"wavyzon listening\"\n}",
+        "logs": "{}",
+        "stop": "^C"
+    },
+    "scripts": {
+        "installation": {
+            "script": "#!/bin/bash\n# Wavyzon - build from source (Rust + CMake for the static libopus), mirrors the repository Dockerfile.\n# Built on Debian bookworm; every shared library the binary needs (glibc, libgcc_s...) and the dynamic\n# loader are bundled next to it, so the runtime image's glibc does not matter.\n# No libdave, no libopus at runtime: DAVE is pure Rust and Opus is linked statically.\nset -e\nexport DEBIAN_FRONTEND=noninteractive\n\napt-get update\napt-get install -y --no-install-recommends cmake clang git ca-certificates\n\n# /tmp is a small tmpfs in the Wings install container: build on the server volume instead.\nBUILD=/mnt/server/.build\nif [ -d \"${BUILD}\" ]; then chmod -R u+w \"${BUILD}\"; rm -rf \"${BUILD}\"; fi\nmkdir -p \"${BUILD}/tmp\" \"${BUILD}/cargo\" \"${BUILD}/target\"\nexport TMPDIR=\"${BUILD}/tmp\"\nexport CARGO_HOME=\"${BUILD}/cargo\"\nexport CARGO_TARGET_DIR=\"${BUILD}/target\"\nexport CARGO_INCREMENTAL=0\n# Fewer parallel jobs = less RAM. A release build needs ~1.5 GB per job.\nexport CARGO_BUILD_JOBS=\"${WAVYZON_BUILD_JOBS:-2}\"\n# The image's rustup/cargo live in /usr/local; keep its toolchain.\nexport PATH=\"/usr/local/cargo/bin:${PATH}\"\nexport RUSTUP_HOME=\"${RUSTUP_HOME:-/usr/local/rustup}\"\ncargo --version\n\nREPO=\"${WAVYZON_REPO}\"\nif [ -n \"${WAVYZON_GIT_TOKEN}\" ]; then\n    # Private repository: https://oauth2:<token>@gitlab.com/...\n    REPO=\"$(printf '%s' \"${REPO}\" | sed -E \"s#^https://#https://oauth2:${WAVYZON_GIT_TOKEN}@#\")\"\nfi\necho \"Cloning ${WAVYZON_REPO} (${WAVYZON_REF})...\"\nif ! GIT_TERMINAL_PROMPT=0 git clone --depth 1 --branch \"${WAVYZON_REF}\" \"${REPO}\" \"${BUILD}/src\"; then\n    echo \"ERROR: could not clone ${WAVYZON_REPO} at ${WAVYZON_REF}.\"\n    echo \"If the repository is private, set WAVYZON_GIT_TOKEN (GitLab access token with read_repository).\"\n    exit 1\nfi\ncd \"${BUILD}/src\"\necho \"Commit: $(git rev-parse --short HEAD)\"\n\n# Use the image's stable toolchain instead of downloading the channel pinned in rust-toolchain.toml.\nrm -f rust-toolchain.toml\n\necho \"Building Wavyzon (jobs: ${CARGO_BUILD_JOBS})...\"\ncargo build --release --locked -p wavyzon --bin wavyzon\n\necho \"Copying files to /mnt/server...\"\nrm -rf /mnt/server/lib\nmkdir -p /mnt/server/lib /mnt/server/data /mnt/server/cache\ncp \"${CARGO_TARGET_DIR}/release/wavyzon\" /mnt/server/wavyzon\nchmod +x /mnt/server/wavyzon\ncp LICENSE NOTICE /mnt/server/ 2>/dev/null || true\nldd /mnt/server/wavyzon | awk '/=> \\//{print $3} $1 ~ /ld-linux/{print $1}' | sort -u | while read -r f; do\n    cp -L \"$f\" /mnt/server/lib/\ndone\n# NSS modules must match the bundled libc (DNS lookups).\nMULTIARCH=\"$(gcc -dumpmachine 2>/dev/null || clang -dumpmachine)\"\nfor n in libnss_files.so.2 libnss_dns.so.2 libresolv.so.2; do\n    [ -e \"/lib/${MULTIARCH}/${n}\" ] && cp -L \"/lib/${MULTIARCH}/${n}\" /mnt/server/lib/ || true\ndone\nif ! ls /mnt/server/lib/ld-linux-*.so* >/dev/null 2>&1; then\n    echo \"dynamic loader not bundled\"\n    exit 1\nfi\necho \"Bundled libraries:\"\nls /mnt/server/lib\n\ncat > /mnt/server/start.sh <<'STARTEOF'\n#!/bin/bash\ncd /home/container\nexport WAVYZON_ADDRESS=\"0.0.0.0:${SERVER_PORT}\"\nexport WAVYZON_DATA_DIR=\"${WAVYZON_DATA_DIR:-/home/container/data}\"\nmkdir -p \"${WAVYZON_DATA_DIR}\"\n[ -n \"${WAVYZON_AUDIO_CACHE_DIR}\" ] && mkdir -p \"${WAVYZON_AUDIO_CACHE_DIR}\"\necho \"[egg] log_level=${WAVYZON_LOG_LEVEL:-<unset>} cache_gb=${WAVYZON_AUDIO_CACHE_GB:-<unset>} playback=${WAVYZON_PLAYBACK_SOURCES:-<unset>} address=${WAVYZON_ADDRESS}\"\nfor v in WAVYZON_PASSWORD SPOTIFY_CLIENT_ID SPOTIFY_CLIENT_SECRET WAVYZON_CACHE_SECRET; do\n    val=\"${!v}\"\n    if [ -n \"${val}\" ]; then echo \"[egg] ${v}=set (${#val} chars)\"; else echo \"[egg] ${v}=EMPTY\"; fi\ndone\nLOADER=\"$(ls /home/container/lib/ld-linux-*.so* | head -1)\"\nexec \"${LOADER}\" --library-path /home/container/lib ./wavyzon\nSTARTEOF\nchmod +x /mnt/server/start.sh\n\ncd /mnt/server\nchmod -R u+w \"${BUILD}\"\nrm -rf \"${BUILD}\"\n\nif [ ! -x /mnt/server/wavyzon ]; then\n    echo \"Installation failed\"\n    exit 1\nfi\n\necho \"Installation complete.\"\nexit 0\n",
+            "container": "rust:1-bookworm",
+            "entrypoint": "bash"
+        }
+    },
+    "variables": [
+        {
+            "name": "Apple Music storefront",
+            "description": "Storefront du catalogue Apple Music.",
+            "env_variable": "APPLE_MUSIC_STOREFRONT",
+            "default_value": "us",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "required",
+                "string",
+                "max:10"
+            ],
+            "sort": 31
+        },
+        {
+            "name": "Bitrate Opus par d\u00e9faut",
+            "description": "Bitrate Opus quand le bot n'en envoie pas (bps, 16000-384000).",
+            "env_variable": "WAVYZON_BITRATE",
+            "default_value": "96000",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "required",
+                "integer",
+                "between:16000,384000"
+            ],
+            "sort": 9
+        },
+        {
+            "name": "Branche / Tag",
+            "description": "Branche ou tag \u00e0 compiler (r\u00e9installer le serveur pour mettre \u00e0 jour).",
+            "env_variable": "WAVYZON_REF",
+            "default_value": "dev",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "required",
+                "string",
+                "max:100"
+            ],
+            "sort": 3
+        },
+        {
+            "name": "Buffer par deck (ms)",
+            "description": "Audio d\u00e9cod\u00e9 mis en buffer par deck (1000-60000).",
+            "env_variable": "WAVYZON_BUFFER_MS",
+            "default_value": "10000",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "required",
+                "integer",
+                "between:1000,60000"
+            ],
+            "sort": 8
+        },
+        {
+            "name": "Cible LUFS",
+            "description": "Cible de loudness (-30 \u00e0 -5).",
+            "env_variable": "WAVYZON_NORMALIZE_LUFS",
+            "default_value": "-14",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "required",
+                "integer",
+                "between:-30,-5"
+            ],
+            "sort": 22
+        },
+        {
+            "name": "Deezer activ\u00e9",
+            "description": "Recherche et liens Deezer (m\u00e9tadonn\u00e9es uniquement, la lecture passe par les sources de lecture).",
+            "env_variable": "DEEZER_ENABLED",
+            "default_value": "true",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "required",
+                "string",
+                "in:true,false"
+            ],
+            "sort": 28
+        },
+        {
+            "name": "Dossier cache audio",
+            "description": "Dossier du cache disque (vide = d\u00e9sactiv\u00e9).",
+            "env_variable": "WAVYZON_AUDIO_CACHE_DIR",
+            "default_value": "/home/container/cache",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "nullable",
+                "string",
+                "max:200"
+            ],
+            "sort": 19
+        },
+        {
+            "name": "Dossier de fichiers locaux",
+            "description": "Dossier depuis lequel les pistes locales peuvent \u00eatre jou\u00e9es, ex. /home/container/music (vide = d\u00e9sactiv\u00e9).",
+            "env_variable": "WAVYZON_LOCAL_ROOT",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "nullable",
+                "string",
+                "max:200"
+            ],
+            "sort": 26
+        },
+        {
+            "name": "D\u00e9p\u00f4t Git",
+            "description": "D\u00e9p\u00f4t source compil\u00e9 \u00e0 l'installation.",
+            "env_variable": "WAVYZON_REPO",
+            "default_value": "https://gitlab.com/ihrz/wavyzon.git",
+            "user_viewable": true,
+            "user_editable": false,
+            "rules": [
+                "required",
+                "string",
+                "max:200"
+            ],
+            "sort": 2
+        },
+        {
+            "name": "Fichier d'\u00e9tat",
+            "description": "Sauvegarde des sessions \u00e0 l'arr\u00eat pour reprendre apr\u00e8s red\u00e9marrage (vide = d\u00e9sactiv\u00e9).",
+            "env_variable": "WAVYZON_STATE_FILE",
+            "default_value": "/home/container/state.json",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "nullable",
+                "string",
+                "max:200"
+            ],
+            "sort": 23
+        },
+        {
+            "name": "File d'analyse",
+            "description": "Taille maximale de la file d'analyse.",
+            "env_variable": "WAVYZON_ANALYSIS_QUEUE",
+            "default_value": "32",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "required",
+                "integer",
+                "min:1"
+            ],
+            "sort": 18
+        },
+        {
+            "name": "Fondu pause/reprise (ms)",
+            "description": "0 = pause instantan\u00e9e (0-2000).",
+            "env_variable": "WAVYZON_PAUSE_FADE_MS",
+            "default_value": "0",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "required",
+                "integer",
+                "between:0,2000"
+            ],
+            "sort": 11
+        },
+        {
+            "name": "Format des logs",
+            "description": "pretty (lisible dans la console) ou json (une ligne JSON par \u00e9v\u00e9nement, pour un collecteur de logs).",
+            "env_variable": "WAVYZON_LOG_FORMAT",
+            "default_value": "pretty",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "required",
+                "string",
+                "in:pretty,json"
+            ],
+            "sort": 7
+        },
+        {
+            "name": "HTTP : adresses priv\u00e9es",
+            "description": "Autoriser la source HTTP \u00e0 joindre le r\u00e9seau local (10.x, 192.168.x, 127.0.0.1\u2026). Laisser \u00e0 false sauf si tous les clients sont de confiance.",
+            "env_variable": "WAVYZON_HTTP_ALLOW_PRIVATE",
+            "default_value": "false",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "required",
+                "string",
+                "in:true,false"
+            ],
+            "sort": 25
+        },
+        {
+            "name": "Intervalle playerUpdate (ms)",
+            "description": "Cadence des playerUpdate (min 250).",
+            "env_variable": "WAVYZON_UPDATE_INTERVAL_MS",
+            "default_value": "1000",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "required",
+                "integer",
+                "min:250"
+            ],
+            "sort": 13
+        },
+        {
+            "name": "Jeton Git (d\u00e9p\u00f4t priv\u00e9)",
+            "description": "Jeton d'acc\u00e8s GitLab (scope read_repository) si le d\u00e9p\u00f4t est priv\u00e9. Vide pour un d\u00e9p\u00f4t public.",
+            "env_variable": "WAVYZON_GIT_TOKEN",
+            "default_value": "",
+            "user_viewable": false,
+            "user_editable": false,
+            "rules": [
+                "nullable",
+                "string",
+                "max:200"
+            ],
+            "sort": 4
+        },
+        {
+            "name": "Jobs de compilation",
+            "description": "Compilations en parall\u00e8le \u00e0 l'installation (~1,5 Go de RAM par job). Baisser si l'installation est tu\u00e9e par manque de m\u00e9moire.",
+            "env_variable": "WAVYZON_BUILD_JOBS",
+            "default_value": "2",
+            "user_viewable": true,
+            "user_editable": false,
+            "rules": [
+                "required",
+                "integer",
+                "between:1,32"
+            ],
+            "sort": 5
+        },
+        {
+            "name": "Mot de passe (WAVYZON_PASSWORD)",
+            "description": "Secret partag\u00e9 exig\u00e9 sur chaque requ\u00eate (header Authorization). Obligatoire, 'youshallnotpass' est refus\u00e9.",
+            "env_variable": "WAVYZON_PASSWORD",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "required",
+                "string",
+                "min:8",
+                "not_in:youshallnotpass"
+            ],
+            "sort": 1
+        },
+        {
+            "name": "Niveau de logs",
+            "description": "debug, info, warn ou error.",
+            "env_variable": "WAVYZON_LOG_LEVEL",
+            "default_value": "info",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "required",
+                "string",
+                "in:debug,info,warn,error"
+            ],
+            "sort": 6
+        },
+        {
+            "name": "Normalisation du volume",
+            "description": "Aligner chaque piste sur la m\u00eame loudness.",
+            "env_variable": "WAVYZON_NORMALIZE",
+            "default_value": "true",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "required",
+                "string",
+                "in:true,false"
+            ],
+            "sort": 21
+        },
+        {
+            "name": "Ordre de recherche",
+            "description": "Sources interrog\u00e9es pour une recherche texte, dans l'ordre (Deezer, Spotify et Apple Music = m\u00e9tadonn\u00e9es).",
+            "env_variable": "WAVYZON_SEARCH_ORDER",
+            "default_value": "applemusic,spotify,deezer,soundcloud",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "required",
+                "string",
+                "max:200"
+            ],
+            "sort": 14
+        },
+        {
+            "name": "Pairs du cache",
+            "description": "Autres n\u0153uds Wavyzon avec qui partager le cache disque, URLs s\u00e9par\u00e9es par des virgules (vide = d\u00e9sactiv\u00e9).",
+            "env_variable": "WAVYZON_CACHE_PEERS",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "nullable",
+                "string",
+                "max:500"
+            ],
+            "sort": 33
+        },
+        {
+            "name": "Playout delay (ms)",
+            "description": "D\u00e9lai mesur\u00e9 entre la r\u00e9ception par Discord et l'\u00e9coute, ajout\u00e9 \u00e0 audibleAt.",
+            "env_variable": "WAVYZON_PLAYOUT_DELAY_MS",
+            "default_value": "0",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "required",
+                "integer",
+                "min:0"
+            ],
+            "sort": 10
+        },
+        {
+            "name": "Plugins",
+            "description": "Plugins \u00e0 activer, s\u00e9par\u00e9s par des virgules (vide = tous ceux compil\u00e9s).",
+            "env_variable": "WAVYZON_PLUGINS",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "nullable",
+                "string",
+                "max:200"
+            ],
+            "sort": 27
+        },
+        {
+            "name": "Pr\u00e9chargement au loadtracks",
+            "description": "Pr\u00e9charger le premier r\u00e9sultat de chaque recherche pour un d\u00e9marrage instantan\u00e9.",
+            "env_variable": "WAVYZON_PREFETCH_ON_LOAD",
+            "default_value": "true",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "required",
+                "string",
+                "in:true,false"
+            ],
+            "sort": 16
+        },
+        {
+            "name": "Secret du cache partag\u00e9",
+            "description": "Secret identique sur tous les n\u0153uds, exig\u00e9 pour WAVYZON_CACHE_PEERS.",
+            "env_variable": "WAVYZON_CACHE_SECRET",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "nullable",
+                "string",
+                "max:200"
+            ],
+            "sort": 34
+        },
+        {
+            "name": "SoundCloud activ\u00e9",
+            "description": "Lecture depuis SoundCloud (source de lecture par d\u00e9faut).",
+            "env_variable": "SOUNDCLOUD_ENABLED",
+            "default_value": "true",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "required",
+                "string",
+                "in:true,false"
+            ],
+            "sort": 32
+        },
+        {
+            "name": "Source HTTP",
+            "description": "Jouer les liens audio directs (MP3, FLAC\u2026) et les radios Icecast/Shoutcast.",
+            "env_variable": "WAVYZON_HTTP_SOURCE",
+            "default_value": "true",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "required",
+                "string",
+                "in:true,false"
+            ],
+            "sort": 24
+        },
+        {
+            "name": "Sources de lecture",
+            "description": "Sources qui jouent vraiment l'audio ; les pistes Deezer/Spotify/Apple Music y sont retrouv\u00e9es par ISRC.",
+            "env_variable": "WAVYZON_PLAYBACK_SOURCES",
+            "default_value": "soundcloud",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "required",
+                "string",
+                "max:200"
+            ],
+            "sort": 15
+        },
+        {
+            "name": "Spotify Client ID",
+            "description": "Identifiants Spotify Web API (m\u00e9tadonn\u00e9es uniquement). Sans eux, les liens Spotify ne se r\u00e9solvent pas.",
+            "env_variable": "SPOTIFY_CLIENT_ID",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "nullable",
+                "string",
+                "max:100"
+            ],
+            "sort": 29
+        },
+        {
+            "name": "Spotify Client Secret",
+            "description": "Secret Spotify Web API.",
+            "env_variable": "SPOTIFY_CLIENT_SECRET",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "nullable",
+                "string",
+                "max:100"
+            ],
+            "sort": 30
+        },
+        {
+            "name": "Taille cache audio (Go)",
+            "description": "Plafond du cache disque (1-1000).",
+            "env_variable": "WAVYZON_AUDIO_CACHE_GB",
+            "default_value": "5",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "required",
+                "integer",
+                "between:1,1000"
+            ],
+            "sort": 20
+        },
+        {
+            "name": "Timeout de reprise (s)",
+            "description": "Dur\u00e9e de survie des players quand le client est d\u00e9connect\u00e9.",
+            "env_variable": "WAVYZON_RESUME_TIMEOUT_SECONDS",
+            "default_value": "300",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "required",
+                "integer",
+                "min:1"
+            ],
+            "sort": 12
+        },
+        {
+            "name": "Workers d'analyse",
+            "description": "Concurrence de l'analyse hors-ligne (1-64).",
+            "env_variable": "WAVYZON_ANALYSIS_WORKERS",
+            "default_value": "2",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "required",
+                "integer",
+                "between:1,64"
+            ],
+            "sort": 17
+        }
+    ]
+}

@@ -69,6 +69,14 @@ proxy.
 Voice traffic (UDP to Discord) goes **out** directly from the node; it never
 passes through the proxy and needs no inbound port.
 
+## Pelican / Pterodactyl
+
+[`contrib/pelican/egg-wavyzon.json`](https://gitlab.com/ihrz/wavyzon/-/tree/main/contrib/pelican)
+is a panel egg that builds Wavyzon from source at install time and exposes
+the settings as panel variables. Import it, set `WAVYZON_PASSWORD` and give
+the server a port; [its README](https://gitlab.com/ihrz/wavyzon/-/blob/main/contrib/pelican/README.md)
+covers memory needs during the build and how to update.
+
 ## systemd
 
 ```ini
