@@ -77,6 +77,13 @@ cargo run -p wavyzon --bin livecheck -- "query"   # hits real sources, needs net
 make deny         # cargo-deny (licences, advisories)
 ```
 
+`livecheck` is the designated **live** verifier (the only thing allowed to
+touch the internet): `check` decodes real music from the resolved path,
+`-seek` compares range seeks against a full decode (bit-exact after the
+warm-up frames), `-rec` shows recommendations, `-bench` measures
+search/open/first-audio latency. It reads the node environment, so real
+credentials go in a local gitignored `.env` — never in tracked files.
+
 Before calling anything done: **fmt, clippy with `-D warnings` and the full
 test suite must pass** (around 305 tests, about a minute after the first
 build). Clippy flags `items_after_test_module`: keep `#[cfg(test)] mod tests`
@@ -104,6 +111,9 @@ at the end of the file.
    uses: source/network problems are `common`, 401/403/429 `suspicious`, only
    node bugs are `fault`.
 7. **Plugins are first-class**: same traits and events as built-ins.
+8. **`Stream::start_sample` is in 48 kHz samples** (the player converts it to
+   the decoder's rate when skipping). Cadence's `StartSample` is in native
+   samples — convert when porting tooling or comparisons.
 
 ## Cadence parity
 
@@ -152,6 +162,9 @@ peer index read; 0700 state dir; mirror fallback miss caching.
 - Metric labels for `host_total` and `recommendations_total`, runtime gauges,
   `413` for oversized bodies, the `livecheck` CLI.
 - Symphonia decodes with gapless trimming and skips up to 64 corrupt packets.
+  A full decode therefore starts at a slightly different sample index than a
+  decode from the middle of a file (no header to trim): align before
+  comparing samples bit-exactly (livecheck's `-seek` does).
 
 **Ignored RustSec advisories** (`deny.toml` → `[advisories] ignore`): four
 advisories in davey 0.2.0's dependencies (libcrux-sha3/secrets, crypto-bigint
@@ -195,7 +208,12 @@ apply.
 - **End-to-end**: `crates/wavyzon/tests/{api,e2e}.rs` start a real node
   (`tests/common`) with the testkit's fake voice gateway and tone source.
 - **Network code**: test against local axum servers (`testutil::serve`) or raw
-  `TcpListener`s that stall or reset; never against the internet.
+  `TcpListener`s that stall or reset; never against the internet (livecheck is
+  the documented exception).
+- **`AsyncRead` adapters** (decryption, tee, chunking…): test with a body that
+  returns `Pending` and short reads — an in-memory cursor never triggers poll
+  bugs. A half-filled internal buffer must never be served before it is
+  complete (this exact bug shipped once in the Deezer stripe reader).
 
 ## Conventions
 
