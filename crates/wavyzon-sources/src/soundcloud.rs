@@ -1,5 +1,6 @@
 //! SoundCloud: search, track/set links, short links and playback
-//! (progressive MP3, or HLS MP3 segments joined into one stream).
+//! (progressive MP3, or HLS MP3 / AAC-in-fMP4 segments joined into one
+//! stream, the fMP4 init segment first).
 //!
 //! Without a configured client id, one is scraped from the web player's
 //! scripts, cached for 6 h and re-scraped when the API rejects it; a failed
@@ -83,6 +84,36 @@ struct Transcoding {
     format: TcFormat,
 }
 
+/// What a transcoding carries, in order of preference.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum StreamKind {
+    /// One MP3 file.
+    ProgressiveMp3,
+    /// MP3 segments.
+    HlsMp3,
+    /// AAC in fragmented MP4 segments, after an `EXT-X-MAP` init segment
+    /// (many tracks now only have these).
+    HlsAac,
+}
+
+impl Transcoding {
+    /// `None` for what the node cannot play: snippets, encrypted HLS, and
+    /// `audio/mpegurl` (an adaptive master playlist, which also matched the
+    /// old `starts_with("audio/mpeg")` test and is refused with a 404).
+    fn kind(&self) -> Option<StreamKind> {
+        if self.snipped {
+            return None;
+        }
+        let mime = self.format.mime_type.split(';').next().unwrap_or("").trim();
+        match (self.format.protocol.as_str(), mime) {
+            ("progressive", "audio/mpeg") => Some(StreamKind::ProgressiveMp3),
+            ("hls", "audio/mpeg") => Some(StreamKind::HlsMp3),
+            ("hls", "audio/mp4") => Some(StreamKind::HlsAac),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Default, Deserialize)]
 struct User {
     #[serde(default)]
@@ -147,19 +178,15 @@ impl ApiTrack {
         self.best_transcoding().is_some()
     }
 
-    fn best_transcoding(&self) -> Option<&Transcoding> {
-        let mut hls = None;
-        for tc in &self.media.transcodings {
-            if tc.snipped || !tc.format.mime_type.starts_with("audio/mpeg") {
-                continue;
-            }
-            match tc.format.protocol.as_str() {
-                "progressive" => return Some(tc),
-                "hls" if hls.is_none() => hls = Some(tc),
-                _ => {}
-            }
-        }
-        hls
+    /// The preferred playable transcoding: progressive MP3, then HLS MP3,
+    /// then HLS AAC; the first listed wins a tie (SoundCloud lists the best
+    /// quality first).
+    fn best_transcoding(&self) -> Option<(&Transcoding, StreamKind)> {
+        self.media
+            .transcodings
+            .iter()
+            .filter_map(|tc| tc.kind().map(|k| (tc, k)))
+            .min_by_key(|(_, k)| *k)
     }
 
     fn to_track(&self) -> Track {
@@ -345,15 +372,15 @@ impl SoundCloud {
         Ok(out)
     }
 
-    async fn stream_url(&self, id: &str) -> Result<(String, String), Failure> {
+    async fn stream_url(&self, id: &str) -> Result<(String, StreamKind), Failure> {
         let t = self.api_track(id).await?;
-        let tc = match t.best_transcoding() {
-            Some(tc) if t.playable() => tc.clone(),
+        let (tc, kind) = match t.best_transcoding() {
+            Some((tc, kind)) if t.playable() => (tc.clone(), kind),
             _ => {
                 return Err(Failure::common(
                     NAME,
                     "stream unavailable",
-                    Some("track has no full-length mp3 stream".into()),
+                    Some("track has no full-length mp3 or aac stream".into()),
                 ));
             }
         };
@@ -370,7 +397,7 @@ impl SoundCloud {
         if out.url.is_empty() {
             return Err(Failure::common(NAME, "no stream url returned", None));
         }
-        Ok((out.url, tc.format.protocol))
+        Ok((out.url, kind))
     }
 
     async fn hls_segments(&self, playlist_url: &str) -> Result<Vec<String>, Failure> {
@@ -383,11 +410,18 @@ impl SoundCloud {
         let mut out = Vec::new();
         for line in String::from_utf8_lossy(&body).lines() {
             let line = line.trim();
-            if line.is_empty() || line.starts_with('#') {
-                continue;
-            }
+            // fMP4 playlists start with their init segment (ftyp + moov).
+            let uri = match line.strip_prefix("#EXT-X-MAP:") {
+                Some(attrs) => match map_uri(attrs) {
+                    Some(uri) if out.is_empty() => uri,
+                    Some(_) => return Err(Failure::common(NAME, "hls playlist switches init segment", None)),
+                    None => return Err(Failure::common(NAME, "hls init segment has no uri", None)),
+                },
+                None if line.is_empty() || line.starts_with('#') => continue,
+                None => line,
+            };
             let seg = base
-                .join(line)
+                .join(uri)
                 .map_err(|e| Failure::common(NAME, "bad segment url", Some(e.to_string())))?;
             out.push(seg.to_string());
             if out.len() > MAX_SEGMENTS {
@@ -466,11 +500,17 @@ impl Source for SoundCloud {
     }
 }
 
+/// The `URI="..."` attribute of an `#EXT-X-MAP` tag.
+fn map_uri(attrs: &str) -> Option<&str> {
+    let rest = &attrs[attrs.find("URI=\"")? + 5..];
+    Some(&rest[..rest.find('"')?])
+}
+
 #[async_trait]
 impl Playable for SoundCloud {
     async fn open(&self, track: &Track, _start_ms: i64) -> Result<Stream, Failure> {
-        let (url, protocol) = self.stream_url(&track.identifier).await?;
-        if protocol == "progressive" {
+        let (url, kind) = self.stream_url(&track.identifier).await?;
+        if kind == StreamKind::ProgressiveMp3 {
             let req = Req::get(&url).map_err(|e| e.to_failure(NAME))?;
             let res = self.http.stream(&req).await.map_err(|e| e.to_failure(NAME))?;
             return Ok(Stream {
@@ -497,7 +537,12 @@ impl Playable for SoundCloud {
             .try_flatten();
         Ok(Stream {
             body: Box::new(StreamReader::new(Box::pin(parts))),
-            format: Format::mp3(),
+            format: match kind {
+                StreamKind::HlsAac => Format::Encoded {
+                    hint: Some("mp4".into()),
+                },
+                _ => Format::mp3(),
+            },
             start_sample: 0,
             live: false,
         })
@@ -748,5 +793,62 @@ mod tests {
             assert!(sc.search("song").await.is_err(), "search succeeded without a client id");
         }
         assert_eq!(f.scrapes.load(Ordering::SeqCst), 1);
+    }
+
+    fn with_mime(protocol: &str, mime: &str) -> Value {
+        json!({"url": "https://api-v2.soundcloud.com/media/x", "snipped": false, "format": {"protocol": protocol, "mime_type": mime}})
+    }
+
+    fn kind_of(tcs: Vec<Value>) -> Option<StreamKind> {
+        let t: ApiTrack = serde_json::from_value(track(9, "t", "ALLOW", tcs)).unwrap();
+        t.best_transcoding().map(|(_, k)| k)
+    }
+
+    #[test]
+    fn transcodings_prefer_mp3_then_aac_and_skip_the_adaptive_playlist() {
+        const AAC: &str = "audio/mp4; codecs=\"mp4a.40.2\"";
+        // The case that failed live: AAC HLS plus an adaptive master playlist
+        // (audio/mpegurl), which used to pass for MP3 and answered 404.
+        assert_eq!(
+            kind_of(vec![with_mime("hls", "audio/mpegurl"), with_mime("hls", AAC)]),
+            Some(StreamKind::HlsAac)
+        );
+        assert_eq!(kind_of(vec![with_mime("hls", "audio/mpegurl")]), None);
+        assert_eq!(
+            kind_of(vec![with_mime("hls", AAC), with_mime("hls", "audio/mpeg")]),
+            Some(StreamKind::HlsMp3)
+        );
+        assert_eq!(
+            kind_of(vec![
+                with_mime("hls", "audio/mpeg"),
+                with_mime("progressive", "audio/mpeg")
+            ]),
+            Some(StreamKind::ProgressiveMp3)
+        );
+        assert_eq!(
+            kind_of(vec![with_mime("ctr-encrypted-hls", AAC)]),
+            None,
+            "encrypted hls"
+        );
+    }
+
+    #[tokio::test]
+    async fn hls_playlists_start_with_their_init_segment() {
+        let playlist = "#EXTM3U\n#EXT-X-VERSION:7\n#EXT-X-MAP:URI=\"init.mp4?sig=1\"\n#EXTINF:10.0,\ndata000.m4s\n#EXTINF:9.9,\ndata001.m4s\n#EXT-X-ENDLIST\n";
+        let base =
+            crate::testutil::serve(Router::new().route("/aac/playlist.m3u8", get(move || async move { playlist })))
+                .await;
+        let (_, sc) = fake().await;
+        let segments = sc.hls_segments(&format!("{base}/aac/playlist.m3u8")).await.unwrap();
+        assert_eq!(
+            segments,
+            [
+                format!("{base}/aac/init.mp4?sig=1"),
+                format!("{base}/aac/data000.m4s"),
+                format!("{base}/aac/data001.m4s"),
+            ]
+        );
+        assert_eq!(map_uri("URI=\"a.mp4\",BYTERANGE=\"1@0\""), Some("a.mp4"));
+        assert_eq!(map_uri("BYTERANGE=1"), None);
     }
 }

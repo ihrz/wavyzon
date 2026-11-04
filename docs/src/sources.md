@@ -26,8 +26,9 @@ return the first non-empty result.
 
 Full-length streams of public SoundCloud tracks. Wavyzon scrapes a client id
 automatically (or uses `SOUNDCLOUD_CLIENT_ID`) and refreshes it when
-SoundCloud rotates it. Progressive MP3 is preferred; HLS is used when that's
-all a track offers. Go+ previews (30 s snippets) are rejected rather than
+SoundCloud rotates it. Progressive MP3 is preferred, then HLS MP3, then HLS
+AAC (fragmented MP4), which is all many tracks offer now. The adaptive
+`audio/mpegurl` playlist and encrypted HLS are never used. Go+ previews (30 s snippets) are rejected rather than
 played as if they were the full track.
 
 ## HTTP

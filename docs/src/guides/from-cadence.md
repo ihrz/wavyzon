@@ -112,6 +112,10 @@ A few series also changed shape:
   match exists the track fails with "no matching recording" instead of
   playing the wrong song.
 - Oversized request bodies return `413` instead of `400`.
+- SoundCloud also plays HLS AAC (fragmented MP4), which is all many tracks
+  offer now. Cadence's `audio/mpeg` prefix test also matched the adaptive
+  `audio/mpegurl` playlist, which SoundCloud answers with a 404, so those
+  tracks failed with "not found at source".
 - `livecheck` checks only the first query unless `-bench` is given, and
   `-rec` takes a search query instead of a Deezer seed id.
 
