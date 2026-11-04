@@ -561,7 +561,12 @@ impl Sources {
                 }
                 Err(e) => {
                     tracing::warn!(track = %key, source = p.name(), error = %e, "mirror search failed");
-                    first_err.get_or_insert(e);
+                    // Only the primary's error is the answer (as in
+                    // Cadence): if it searched fine and found nothing, a
+                    // failing fallback still makes this a cached miss.
+                    if i == 0 {
+                        first_err = Some(e);
+                    }
                 }
             }
         }
@@ -855,6 +860,7 @@ mod tests {
         opens: AtomicU32,
         body: &'static [u8],
         isrc_capable: bool,
+        fail_search: bool,
     }
 
     #[async_trait]
@@ -867,6 +873,9 @@ mod tests {
         }
         async fn search(&self, _q: &str) -> Result<Vec<Track>, Failure> {
             self.searches.fetch_add(1, Ordering::SeqCst);
+            if self.fail_search {
+                return Err(Failure::common(self.name, "search down", None));
+            }
             Ok(self.results.lock().clone())
         }
         async fn track(&self, _id: &str) -> Result<Track, Failure> {
@@ -1097,6 +1106,26 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(m.source, "fake", "primary should win the mirror");
+    }
+
+    /// The primary searched fine and found nothing; a failing fallback does
+    /// not turn that into an error (Cadence returns only the primary's
+    /// error), and the miss is cached.
+    #[tokio::test]
+    async fn failing_fallback_after_an_empty_primary_is_a_cached_miss() {
+        let primary = audio(&[], vec![]);
+        let fb = Arc::new(FakeAudio {
+            name: "fb",
+            fail_search: true,
+            ..Default::default()
+        });
+        let r = build(primary.clone(), vec![fb.clone()], &[]);
+        let t = tr("mirror", "s1", "Nowhere Song", "Nobody", 200_000);
+        let err = r.playable(&t).await.unwrap_err();
+        assert!(err.message.contains("no matching recording"), "{err:?}");
+        assert_eq!(r.metrics().mirror.miss.load(Ordering::SeqCst), 1);
+        r.playable(&t).await.unwrap_err();
+        assert_eq!(primary.searches.load(Ordering::SeqCst), 1, "the miss was not cached");
     }
 
     #[tokio::test]
