@@ -73,6 +73,8 @@ rotation and benching, same range seeks).
 - `WAVYZON_PLAYBACK_SOURCES` replaces Cadence's Deezer-first playback with
   SoundCloud fallback.
 - `WAVYZON_LOG_FORMAT` (`json`/`pretty`) and `RUST_LOG` are new.
+- Lyrics from lyrics.ovh on `/v1/lyrics` and `/v4/lyrics` (LavaLyrics shape,
+  `LYRICS_ENABLED`, `LYRICS_API_URL`, `LYRICS_PROXY`, `lyrics_total`).
 - `WAVYZON_CROSSFADE_MS` (default `3000`): the `nextTrack` crossfades in
   before the current track ends instead of Cadence's strict gapless swap.
   Set it to `0` for Cadence's behaviour.

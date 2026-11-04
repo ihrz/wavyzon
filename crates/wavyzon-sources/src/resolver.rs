@@ -46,6 +46,7 @@ use wavyzon_plugin::{Failure, Format, LoadResult, LoadType, Source, Stream, Trac
 
 use crate::audiocache::Store;
 use crate::cache::Lru;
+use crate::lyrics::LyricsClient;
 use crate::matching::{best_match, fan_edit, normalize_isrc, rank_for_query, within_drift};
 use crate::metrics::{Metrics, inc};
 use crate::streams::{HeadReader, TeeReader};
@@ -100,6 +101,7 @@ struct Inner {
     warm_slots: Arc<Semaphore>,
     heads: Lru<String, Arc<Head>>,
     disk: Option<DiskCache>,
+    lyrics: Option<Arc<LyricsClient>>,
     metrics: Arc<Metrics>,
 }
 
@@ -112,6 +114,7 @@ pub struct SourcesBuilder {
     playback_order: Vec<String>,
     prefetch_on_load: bool,
     audio_cache: Option<Arc<Store>>,
+    lyrics: Option<Arc<LyricsClient>>,
     metrics: Arc<Metrics>,
 }
 
@@ -126,6 +129,7 @@ impl SourcesBuilder {
             playback_order,
             prefetch_on_load: false,
             audio_cache: None,
+            lyrics: None,
             metrics: Arc::new(Metrics::default()),
         }
     }
@@ -169,6 +173,12 @@ impl SourcesBuilder {
     /// the same one).
     pub fn metrics(mut self, m: Arc<Metrics>) -> Self {
         self.metrics = m;
+        self
+    }
+
+    /// Serve lyrics through this client (unset: lyrics are off).
+    pub fn lyrics(mut self, client: Arc<LyricsClient>) -> Self {
+        self.lyrics = Some(client);
         self
     }
 
@@ -232,6 +242,7 @@ impl SourcesBuilder {
                 store,
                 plays: Lru::new(PLAY_ENTRIES, PLAY_WINDOW),
             }),
+            lyrics: self.lyrics,
             metrics: self.metrics,
         }))
     }
@@ -292,6 +303,11 @@ impl Sources {
 
     pub fn metrics(&self) -> Arc<Metrics> {
         self.0.metrics.clone()
+    }
+
+    /// The lyrics client, unless lyrics are disabled.
+    pub fn lyrics(&self) -> Option<&LyricsClient> {
+        self.0.lyrics.as_deref()
     }
 
     /// The disk audio cache, if configured.

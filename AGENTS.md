@@ -161,6 +161,9 @@ peer index read; 0700 state dir; mirror fallback miss caching.
   the current track ends (`auto_crossfade_locked` in `gapless.rs`), with the
   same `finished` + adoption events as a gapless swap. `0` = Cadence's strict
   gapless.
+- Lyrics (new): `wavyzon-sources/src/lyrics.rs` asks lyrics.ovh, served on
+  `/v1/lyrics` and `/v4/lyrics` in LavaLyrics' shape; `/v4/info` lists
+  `lavalyrics-plugin` (never a lyrics *source* plugin: Wavyzon is not LavaSrc).
 - `ytsearch:`/`ytmsearch:` are plain searches through `WAVYZON_SEARCH_ORDER`
   (a test pins this).
 - Metric labels for `host_total` and `recommendations_total`, runtime gauges,

@@ -71,6 +71,7 @@ team.
 ### 🔍 **Sources**
 
 - **SoundCloud** search, links and playback
+- **Lyrics** from lyrics.ovh, through Lavalink's LavaLyrics API
 - **Deezer** search, links and playback (`DEEZER_ARL` + `DEEZER_MASTER_KEY`), Range-based seeking
 - **HTTP**: direct MP3 / AAC / M4A / FLAC / Ogg / WAV links and **Icecast / Shoutcast radio**, Range-based seeking, private addresses blocked by default
 - **Local files** (opt-in, sandboxed in `WAVYZON_LOCAL_ROOT`)
@@ -143,6 +144,7 @@ and the [full reference](docs/src/configuration.md).
 | `WAVYZON_ADDRESS` | `0.0.0.0:2333` | Listen address |
 | `WAVYZON_PLAYBACK_SOURCES` | `deezer,soundcloud` | Where Spotify / Apple Music tracks are mirrored to, in order |
 | `DEEZER_ARL` + `DEEZER_MASTER_KEY` | | Enable Deezer streaming (account ARL cookie and 16-byte stream cipher key) |
+| `LYRICS_ENABLED` | `true` | Lyrics from lyrics.ovh on `/v4/lyrics` (LavaLyrics API) |
 | `WAVYZON_HTTP_ALLOW_PRIVATE` | `false` | Let the HTTP source fetch private / local addresses |
 | `WAVYZON_LOCAL_ROOT` | off | Directory the local-file source may read |
 | `WAVYZON_PLUGINS` | all compiled in | Plugins to enable, comma-separated |

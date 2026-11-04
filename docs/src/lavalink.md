@@ -18,6 +18,7 @@ changes beyond the node address and password.
 | `GET /v4/sessions/{id}/players`, `GET`/`PATCH`/`DELETE …/players/{guild}` | ✅ including `noReplace`, `userData`, `track.identifier` (`endTime` is accepted and ignored) |
 | Standard filters | ✅ `equalizer`, `timescale`, `karaoke`, `lowPass`, `tremolo`, `vibrato`, `rotation`, plus `reverb` |
 | `pluginFilters` | ✅ routed to [plugin filters](filters.md#plugin-filters) |
+| LavaLyrics `GET /v4/lyrics`, `GET …/players/{guild}/track/lyrics` | ✅ plain lyrics from lyrics.ovh (no timed lines); `lavalyrics-plugin` is listed in `/v4/info` `plugins` |
 | `/v4/routeplanner/*` | ❌ (no IP rotation) |
 | `channelMix`, `distortion` filters | ❌ not listed in `/v4/info` `filters`; ignored |
 | Lavalink (JVM) plugins | ❌ Wavyzon has its [own plugin API](plugins.md) |
@@ -27,6 +28,12 @@ Wavyzon additions also reachable under `/v4`: `POST /v4/prefetch`,
 `…/players/{guild}/mix/*`, `GET /v4/mix/analysis/{source}/{identifier}`,
 `POST /v4/sessions/{id}/mix/analyzetrack`, and the extra player fields
 `bitrate` and `nextTrack`.
+
+**Lyrics**: Wavyzon lists `lavalyrics-plugin` but no lyrics *source* plugin
+(it is not LavaSrc), so clients that validate plugins before calling lyrics,
+like `lavalink-client`'s `node.lyrics.get()`, refuse to. Call the route
+directly instead (`node.request("/lyrics?track=…")`), or turn the client's
+plugin validation off.
 
 ## Differences you may notice
 

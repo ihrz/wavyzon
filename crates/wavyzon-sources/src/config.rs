@@ -137,6 +137,28 @@ impl Default for SoundCloudConfig {
     }
 }
 
+/// Lyrics from lyrics.ovh (served by the node's `/v4/lyrics`).
+#[derive(Debug, Clone)]
+pub struct LyricsConfig {
+    /// `LYRICS_ENABLED` (default `true`).
+    pub enabled: bool,
+    /// `LYRICS_API_URL`: the lyrics.ovh API base (default
+    /// `https://api.lyrics.ovh/v1`); for a mirror or tests.
+    pub api_url: String,
+    /// `LYRICS_PROXY`.
+    pub proxy: Option<String>,
+}
+
+impl Default for LyricsConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            api_url: crate::lyrics::DEFAULT_API.into(),
+            proxy: None,
+        }
+    }
+}
+
 /// Local files.
 #[derive(Debug, Clone, Default)]
 pub struct LocalConfig {
@@ -174,6 +196,7 @@ pub struct SourcesConfig {
     /// `WAVYZON_HTTP_PROXY` (aliases `HTTP_SOURCE_*`).
     pub http: HttpSourceConfig,
     pub local: LocalConfig,
+    pub lyrics: LyricsConfig,
 }
 
 impl Default for SourcesConfig {
@@ -190,6 +213,7 @@ impl Default for SourcesConfig {
             soundcloud: SoundCloudConfig::default(),
             http: HttpSourceConfig::default(),
             local: LocalConfig::default(),
+            lyrics: LyricsConfig::default(),
         }
     }
 }
@@ -242,6 +266,11 @@ impl SourcesConfig {
         c.soundcloud.enabled = flag("SOUNDCLOUD_ENABLED", true);
         c.soundcloud.client_id = s("SOUNDCLOUD_CLIENT_ID");
         c.soundcloud.proxy = s("SOUNDCLOUD_PROXY");
+        c.lyrics.enabled = flag("LYRICS_ENABLED", true);
+        if let Some(url) = s("LYRICS_API_URL") {
+            c.lyrics.api_url = url;
+        }
+        c.lyrics.proxy = s("LYRICS_PROXY");
         let enabled = if s("WAVYZON_HTTP_SOURCE").is_some() {
             "WAVYZON_HTTP_SOURCE"
         } else {

@@ -32,6 +32,7 @@ pub mod deezer;
 pub mod http_source;
 pub mod httpx;
 pub mod local;
+pub mod lyrics;
 pub mod matching;
 pub mod metrics;
 pub mod probe;

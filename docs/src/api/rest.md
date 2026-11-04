@@ -95,7 +95,8 @@ What the node can do.
   ],
   "mixing": true,
   "analysis": 3,
-  "wireClock": true
+  "wireClock": true,
+  "lyrics": true
 }
 ```
 
@@ -108,6 +109,7 @@ What the node can do.
 | `plugins` | Loaded plugins (same as [`GET /v1/plugins`](#get-v1plugins)) |
 | `analysis` | Version of the track analysis format |
 | `wireClock` | Positions are measured at the socket (always `true`) |
+| `lyrics` | [Lyrics](#lyrics) are served (`LYRICS_ENABLED`) |
 
 `pluginFilters` and `plugins` are new in Wavyzon.
 
@@ -526,6 +528,44 @@ full.
 
 ---
 
+## Lyrics
+
+Plain-text lyrics from [lyrics.ovh](https://lyrics.ovh), in the response
+shape of Lavalink's LavaLyrics plugin (so Lavalink clients can read them,
+see [Lavalink compatibility](../lavalink.md)). Both routes also exist under
+`/v4`. Off with `LYRICS_ENABLED=false`.
+
+### `GET /v1/lyrics?track=…`
+
+Lyrics of an encoded track (`encodedTrack` is accepted as well), looked up by
+its artist and title.
+
+```json
+{
+  "sourceName": "deezer",
+  "provider": "lyrics.ovh",
+  "text": "Pressure\nPushing down on me\n…",
+  "lines": [],
+  "plugin": {}
+}
+```
+
+`204` when lyrics.ovh has none, `400` without `track`, `404` when lyrics are
+disabled, `502` when lyrics.ovh failed. `lines` is always empty: lyrics.ovh
+has no timed lyrics.
+
+The track's own artist and title are tried first, then once more cleaned up
+(first credited artist, title without `(feat. …)`, `- Remastered 2011`,
+`(Official Video)`…), both at once. Answers are cached for 7 days, misses
+for 6 hours. Expect about 5 s for a song lyrics.ovh does not know (it runs
+its own fallback search), and well under a second otherwise.
+
+### `GET /v1/sessions/{session}/players/{guild}/track/lyrics`
+
+Same answer for the track the player is on; `404` when nothing is playing.
+
+---
+
 ## Peer cache
 
 Used between Wavyzon nodes (`WAVYZON_CACHE_PEERS`). Accept either the node
@@ -557,4 +597,5 @@ password or `WAVYZON_CACHE_SECRET`.
 | `DELETE` | `…/players/{guild}/mix` |
 | `GET` | `/v1/mix/analysis/{source}/{identifier}` |
 | `POST` | `/v1/mix/analyze` |
+| `GET` | `/v1/lyrics`, `/v1/sessions/{session}/players/{guild}/track/lyrics` |
 | `GET` | `/v1/cache/index`, `/v1/cache/file` |

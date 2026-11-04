@@ -55,6 +55,14 @@ impl Sources {
             );
             b = b.builtin(Arc::new(sc));
         }
+        if cfg.lyrics.enabled {
+            let lyrics = crate::lyrics::LyricsClient::new(
+                client(crate::lyrics::NAME, &cfg.lyrics.proxy)?,
+                cfg.lyrics.api_url.clone(),
+                b.metrics_handle(),
+            );
+            b = b.lyrics(Arc::new(lyrics));
+        }
         if cfg.deezer.enabled {
             let setup = crate::deezer::Setup {
                 arls: cfg.deezer.arl.clone(),

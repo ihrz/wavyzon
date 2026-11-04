@@ -35,6 +35,11 @@ pub(super) fn routes(r: Router<Arc<Api>>) -> Router<Arc<Api>> {
         )
         .route("/v4/sessions/{session}/mix/analyzetrack", post(analyze_track_v4))
         .route("/v4/mix/analysis/{source}/{*identifier}", get(get_analysis))
+        .route("/v4/lyrics", get(super::lyrics::by_track))
+        .route(
+            "/v4/sessions/{session}/players/{guild}/track/lyrics",
+            get(super::lyrics::current),
+        )
 }
 
 async fn version() -> axum::response::Response {
@@ -46,11 +51,15 @@ async fn info(State(api): St) -> axum::response::Response {
     if !managers.iter().any(|m| m == ALIAS_SOURCE) {
         managers.push(ALIAS_SOURCE.into());
     }
-    let plugins: Vec<_> = api
+    let mut plugins: Vec<_> = api
         .plugins
         .iter()
         .map(|p| json!({ "name": p.name, "version": p.version }))
         .collect();
+    // The lyrics routes speak LavaLyrics' API, which clients detect by name.
+    if api.sources.lyrics().is_some() {
+        plugins.push(json!({ "name": super::lyrics::PLUGIN_NAME, "version": VERSION }));
+    }
     ok_json(json!({
         "version": parse_version(VERSION),
         "buildTime": api.started_unix_ms,

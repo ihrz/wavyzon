@@ -405,6 +405,20 @@
             "sort": 37
         },
         {
+            "name": "Paroles (lyrics.ovh)",
+            "description": "Servir les paroles depuis lyrics.ovh sur /v4/lyrics (API LavaLyrics).",
+            "env_variable": "LYRICS_ENABLED",
+            "default_value": "true",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "required",
+                "string",
+                "in:true,false"
+            ],
+            "sort": 40
+        },
+        {
             "name": "Playout delay (ms)",
             "description": "D\u00e9lai mesur\u00e9 entre la r\u00e9ception par Discord et l'\u00e9coute, ajout\u00e9 \u00e0 audibleAt.",
             "env_variable": "WAVYZON_PLAYOUT_DELAY_MS",

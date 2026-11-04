@@ -115,6 +115,8 @@ variables = [
     var(39, "Fondu enchaîné automatique (ms)", "WAVYZON_CROSSFADE_MS", "3000",
         "Fondu vers le nextTrack avant la fin du morceau, comme Tidal (0-12000, 0 = gapless strict).",
         ["required", "integer", "between:0,12000"]),
+    var(40, "Paroles (lyrics.ovh)", "LYRICS_ENABLED", "true",
+        "Servir les paroles depuis lyrics.ovh sur /v4/lyrics (API LavaLyrics).", BOOL),
 ]
 variables.sort(key=lambda v: v["name"].lower())
 

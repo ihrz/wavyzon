@@ -625,3 +625,99 @@ async fn metrics_are_exposed() {
     }
     n.stop().await;
 }
+
+/// A fake lyrics.ovh on a local port: knows "Queen / Under Pressure".
+async fn fake_lyrics() -> String {
+    use axum::extract::Path;
+    use axum::http::StatusCode;
+    use axum::response::IntoResponse;
+    let app = axum::Router::new().route(
+        "/v1/{artist}/{title}",
+        axum::routing::get(|Path((artist, title)): Path<(String, String)>| async move {
+            if (artist.as_str(), title.as_str()) == ("Queen", "Under Pressure") {
+                (StatusCode::OK, r#"{"lyrics":"Pressure\nPushing down on me"}"#).into_response()
+            } else {
+                (StatusCode::NOT_FOUND, r#"{"error":"No lyrics found"}"#).into_response()
+            }
+        }),
+    );
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let base = format!("http://{}/v1", listener.local_addr().unwrap());
+    tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+    base
+}
+
+fn song(author: &str, title: &str) -> String {
+    Track {
+        source: "testtone".into(),
+        identifier: "440:3000".into(),
+        author: author.into(),
+        title: title.into(),
+        duration_ms: 3000,
+        ..Default::default()
+    }
+    .encode()
+}
+
+#[tokio::test]
+async fn lyrics_follow_the_lavalyrics_api() {
+    let api = fake_lyrics().await;
+    let n = start(&[("LYRICS_ENABLED", "true"), ("LYRICS_API_URL", &api)]).await;
+    for v in ["v1", "v4"] {
+        let url = n.url(&format!("/{v}/lyrics?track={}", song("Queen", "Under Pressure")));
+        let (status, body) = call(Method::GET, &url, None).await;
+        assert_eq!(status, 200, "{v}: {body}");
+        assert_eq!(
+            body,
+            json!({"sourceName": "testtone", "provider": "lyrics.ovh", "text": "Pressure\nPushing down on me", "lines": [], "plugin": {}})
+        );
+        let url = n.url(&format!("/{v}/lyrics?track={}", song("Nobody", "Nothing")));
+        let (status, _) = call(Method::GET, &url, None).await;
+        assert_eq!(status, 204, "{v}: no lyrics");
+        let (status, _) = call(Method::GET, &n.url(&format!("/{v}/lyrics")), None).await;
+        assert_eq!(status, 400, "{v}: missing track");
+        let (status, _) = call(
+            Method::GET,
+            &n.url(&format!("/{v}/sessions/nope/players/1/track/lyrics")),
+            None,
+        )
+        .await;
+        assert_eq!(status, 404, "{v}: unknown session");
+    }
+    let (_, info) = call(Method::GET, &n.url("/v4/info"), None).await;
+    assert!(
+        info["plugins"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|p| p["name"] == "lavalyrics-plugin"),
+        "{info}"
+    );
+    let (_, info) = call(Method::GET, &n.url("/v1/info"), None).await;
+    assert_eq!(info["lyrics"], true);
+    let (_, metrics) = call(Method::GET, &n.url("/metrics"), None).await;
+    let metrics = metrics.as_str().unwrap().to_string();
+    assert!(
+        metrics.contains("wavyzon_lyrics_total{outcome=\"cached\"} 1"),
+        "{metrics}"
+    );
+    n.stop().await;
+}
+
+#[tokio::test]
+async fn lyrics_can_be_disabled() {
+    let n = start(&[]).await;
+    let url = n.url(&format!("/v4/lyrics?track={}", song("Queen", "Under Pressure")));
+    let (status, body) = call(Method::GET, &url, None).await;
+    assert_eq!(status, 404, "{body}");
+    let (_, info) = call(Method::GET, &n.url("/v4/info"), None).await;
+    assert!(
+        !info["plugins"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|p| p["name"] == "lavalyrics-plugin"),
+        "{info}"
+    );
+    n.stop().await;
+}

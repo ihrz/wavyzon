@@ -72,6 +72,7 @@ le nœud audio en Go derrière *greed*, par l'équipe [iHorizon](https://gitlab.
 ### 🔍 **Sources**
 
 - **SoundCloud** : recherche, liens et lecture
+- **Paroles** depuis lyrics.ovh, via l'API LavaLyrics de Lavalink
 - **Deezer** : recherche, liens et lecture (`DEEZER_ARL` + `DEEZER_MASTER_KEY`), sauts via `Range`
 - **HTTP** : liens directs MP3 / AAC / M4A / FLAC / Ogg / WAV et **radios Icecast / Shoutcast**, sauts via `Range`, adresses privées bloquées par défaut
 - **Fichiers locaux** (optionnels, confinés à `WAVYZON_LOCAL_ROOT`)
@@ -144,6 +145,7 @@ et la [référence complète](docs/src/configuration.md) (en anglais).
 | `WAVYZON_ADDRESS` | `0.0.0.0:2333` | Adresse d'écoute |
 | `WAVYZON_PLAYBACK_SOURCES` | `deezer,soundcloud` | Où les pistes Spotify / Apple Music sont mises en miroir, par ordre de préférence |
 | `DEEZER_ARL` + `DEEZER_MASTER_KEY` | | Activer la lecture Deezer (cookie ARL de compte et clé Blowfish de 16 octets) |
+| `LYRICS_ENABLED` | `true` | Paroles depuis lyrics.ovh sur `/v4/lyrics` (API LavaLyrics) |
 | `WAVYZON_HTTP_ALLOW_PRIVATE` | `false` | Autoriser la source HTTP à joindre des adresses privées / locales |
 | `WAVYZON_LOCAL_ROOT` | désactivé | Dossier que la source de fichiers locaux peut lire |
 | `WAVYZON_PLUGINS` | tous ceux compilés | Plugins à activer, séparés par des virgules |

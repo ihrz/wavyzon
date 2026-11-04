@@ -103,6 +103,8 @@ pub fn config(dir: &TempDir, extra: &[(&str, &str)]) -> Config {
         ("DEEZER_ENABLED", "false"),
         ("SPOTIFY_ENABLED", "false"),
         ("APPLE_MUSIC_ENABLED", "false"),
+        // hermetic: lyrics tests point LYRICS_API_URL at a local server
+        ("LYRICS_ENABLED", "false"),
         ("WAVYZON_SEARCH_ORDER", "testtone"),
         ("WAVYZON_PLAYBACK_SOURCES", "testtone"),
         // no offline analysis of long test tones (it would outlive the test)

@@ -2,6 +2,7 @@
 //! layer, `/metrics`, the peer cache routes and plugin routes.
 
 mod cache;
+mod lyrics;
 mod node;
 mod players;
 mod tracks;
@@ -263,6 +264,11 @@ pub fn router(api: Arc<Api>, plugin_routes: Vec<(String, Router)>) -> Router {
             get(players::get_player)
                 .patch(players::update_player)
                 .delete(players::delete_player),
+        )
+        .route("/v1/lyrics", get(lyrics::by_track))
+        .route(
+            "/v1/sessions/{session}/players/{guild}/track/lyrics",
+            get(lyrics::current),
         )
         .route("/v1/cache/index", get(cache::index))
         .route("/v1/cache/file", get(cache::file));

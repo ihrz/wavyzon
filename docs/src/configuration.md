@@ -64,7 +64,9 @@ These are Cadence's settings with the `CADENCE_` prefix renamed to
 | `SPOTIFY_CLIENT_ID` / `SPOTIFY_CLIENT_SECRET` | | Spotify Web API credentials (client-credentials flow). Without them Spotify links and `spsearch:` don't resolve. Metadata only. |
 | `APPLE_MUSIC_TOKEN` | scraped | Optional fixed Apple Music developer token. Metadata only. |
 | `APPLE_MUSIC_STOREFRONT` | `us` | Apple Music catalog storefront (country code). |
-| `DEEZER_PROXY`, `SPOTIFY_PROXY`, `APPLE_MUSIC_PROXY`, `SOUNDCLOUD_PROXY` | | Per-source HTTP(S) or SOCKS proxy. A proxy that fails falls back to a direct connection for 60 s. |
+| `LYRICS_ENABLED` | `true` | Serve lyrics from lyrics.ovh on `/v1/lyrics` and `/v4/lyrics` (see [REST](api/rest.md#lyrics)). |
+| `LYRICS_API_URL` | `https://api.lyrics.ovh/v1` | lyrics.ovh API base, for a mirror. |
+| `DEEZER_PROXY`, `SPOTIFY_PROXY`, `APPLE_MUSIC_PROXY`, `SOUNDCLOUD_PROXY`, `LYRICS_PROXY` | | Per-source HTTP(S) or SOCKS proxy. A proxy that fails falls back to a direct connection for 60 s. |
 
 Deezer search, links and ISRC lookups work with no credentials (public
 catalog). **Streaming** needs `DEEZER_ARL` (an account) and
