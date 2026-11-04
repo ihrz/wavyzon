@@ -17,11 +17,12 @@ The install runs in `rust:1-bookworm` (like the repository's `Dockerfile`):
 1. installs CMake and Clang (libopus is built from source and linked
    statically; DAVE is pure Rust, so there is **no libdave and no libopus**
    at runtime);
-2. clones `WAVYZON_REPO` at `WAVYZON_REF` (default branch **`dev`**). The
-   GitLab repository is **private** for now, so set `WAVYZON_GIT_TOKEN` (an
-   admin-only variable): a project or personal access token with the
-   `read_repository` scope, used as `https://oauth2:<token>@gitlab.com/…`.
-   Without it the clone fails with a message saying so;
+2. clones `WAVYZON_REPO` at `WAVYZON_REF` (default **`main`**; set `dev` to
+   follow the integration branch). The repository is public, so no token is
+   needed. `WAVYZON_GIT_TOKEN` (admin-only) is only for a private fork: a
+   project or personal access token with the `read_repository` scope, used as
+   `https://oauth2:<token>@gitlab.com/…`. If the clone fails, the install stops
+   with a message saying so;
 3. `cargo build --release --locked -p wavyzon`, on the server volume because
    the install container's `/tmp` is a small tmpfs;
 4. copies the binary, its shared libraries and the dynamic loader to the

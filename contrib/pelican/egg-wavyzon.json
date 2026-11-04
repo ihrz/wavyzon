@@ -71,7 +71,7 @@
             "name": "Branche / Tag",
             "description": "Branche ou tag \u00e0 compiler (r\u00e9installer le serveur pour mettre \u00e0 jour).",
             "env_variable": "WAVYZON_REF",
-            "default_value": "dev",
+            "default_value": "main",
             "user_viewable": true,
             "user_editable": true,
             "rules": [
@@ -251,7 +251,7 @@
         },
         {
             "name": "Jeton Git (d\u00e9p\u00f4t priv\u00e9)",
-            "description": "Jeton d'acc\u00e8s GitLab (scope read_repository) si le d\u00e9p\u00f4t est priv\u00e9. Vide pour un d\u00e9p\u00f4t public.",
+            "description": "Facultatif : le d\u00e9p\u00f4t est public. Jeton d'acc\u00e8s GitLab (scope read_repository) seulement pour un fork priv\u00e9.",
             "env_variable": "WAVYZON_GIT_TOKEN",
             "default_value": "",
             "user_viewable": false,
