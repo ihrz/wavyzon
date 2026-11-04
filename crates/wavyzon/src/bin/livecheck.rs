@@ -167,20 +167,39 @@ async fn seek(s: &Sources, query: &str) -> anyhow::Result<()> {
         let start = Instant::now();
         let stream = s.open(&t, at).await?;
         let start_sample = stream.start_sample;
-        let (got, _) = decode(stream, Some(2 * 48_000 * 5)).await?;
+        let (got, rate) = decode(stream, Some(2 * 48_000 * 5)).await?;
         let took = start.elapsed();
         if start_sample == 0 {
             println!("seek {at:6}ms: the source ignored the seek, the player skips forward itself ({took:?})");
             continue;
         }
-        let off = start_sample as usize * 2;
+        // `start_sample` is in 48 kHz units (the player's clock); `full` is
+        // interleaved samples at the stream's own rate.
+        let off = (start_sample * rate as i64 / 48_000) as usize * 2;
         let skip = 2 * 1152 * 4;
-        if let Some(i) = (skip..got.len()).find(|&i| off + i >= full.len() || got[i] != full[off + i]) {
-            bail!("seek {at}ms: sample {} differs from the full decode", i / 2);
+        let want = &got[skip..];
+        if want.len() < 2 * 1024 {
+            bail!("seek {at}ms: decoded too little audio to compare");
+        }
+        // A full decode trims the encoder delay (gapless), while a stream that
+        // starts mid-file has no header to trim, so the two decodes may be
+        // shifted by a constant number of samples. Locate the match within a
+        // small window, then require bit-exactness to the end.
+        let probe = 2 * 1024;
+        let around = off + skip;
+        let lo = around.saturating_sub(2 * 4096);
+        let hi = (around + 2 * 4096).min(full.len().saturating_sub(want.len()));
+        let found = (lo..hi).find(|&j| full[j..j + probe] == want[..probe]);
+        let j = found
+            .with_context(|| format!("seek {at}ms: no alignment with the full decode after the warm-up frames"))?;
+        if full[j..j + want.len()] != want[..] {
+            let i = (0..want.len()).find(|&i| full[j + i] != want[i]).unwrap_or(0);
+            bail!("seek {at}ms: sample {} differs from the full decode", skip / 2 + i / 2);
         }
         println!(
-            "seek {at:6}ms: start sample {start_sample}, {} samples bit-exact after the warm-up frames, opened in {took:?}",
-            got.len().saturating_sub(skip) / 2
+            "seek {at:6}ms: start sample {start_sample}, {} samples bit-exact after the warm-up frames (decoder trim {:+} samples), opened in {took:?}",
+            want.len() / 2,
+            (j as i64 - around as i64) / 2
         );
     }
     println!("result:   seeks match the full decode");
