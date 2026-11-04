@@ -18,7 +18,8 @@ use serde::{Deserialize, Serialize};
 use tokio::io::{AsyncRead, AsyncReadExt};
 use tokio::runtime::Handle;
 use tokio::sync::mpsc;
-use wavyzon_audio::{FRAME_SAMPLES, SAMPLE_RATE, clip, codec};
+use wavyzon_audio::dsp::Resampler;
+use wavyzon_audio::{FRAME_SAMPLES, FRAME_SAMPLES_PER_CHANNEL, SAMPLE_RATE, clip, codec};
 use wavyzon_plugin::{Failure, Stream, Track};
 
 use crate::analyzer::Analyzer;
@@ -261,11 +262,15 @@ fn decode_and_analyze(stream: Stream, track: &Track, handle: Handle, deadline: I
         deadline,
     };
     let mut pcm = codec::decode(&stream.format, Box::new(reader)).map_err(|e| e.to_string())?;
-    let mut resampler = Linear::new(pcm.sample_rate());
+    // Cadence's windowed-sinc resampler, the one the player uses, so offline
+    // and live fingerprints of the same track agree.
+    let mut resampler = Resampler::new(pcm.sample_rate(), 1.0);
     let mut analyzer = Analyzer::new(track.source.clone(), track.identifier.clone(), None);
     let limit = MAX_TRACK_LENGTH.as_millis() as i64 * SAMPLE_RATE as i64 / 1000;
     let mut input = vec![0i16; 8192];
-    let mut pending: Vec<i16> = Vec::with_capacity(FRAME_SAMPLES * 8);
+    let mut out = [0f64; FRAME_SAMPLES];
+    let mut frame = [0i16; FRAME_SAMPLES];
+    let mut pending = 0;
     while analyzer.samples() < limit {
         if Instant::now() >= deadline {
             return Err("analysis timed out".into());
@@ -274,55 +279,20 @@ fn decode_and_analyze(stream: Stream, track: &Track, handle: Handle, deadline: I
         if n == 0 {
             break;
         }
-        resampler.process(&input[..n], &mut pending);
-        let whole = pending.len() / FRAME_SAMPLES * FRAME_SAMPLES;
-        for frame in pending[..whole].chunks_exact(FRAME_SAMPLES) {
-            analyzer.feed_samples(frame);
+        resampler.write(&input[..n]);
+        loop {
+            pending += resampler.read(&mut out[pending * 2..]);
+            if pending < FRAME_SAMPLES_PER_CHANNEL {
+                break;
+            }
+            for (f, o) in frame.iter_mut().zip(&out) {
+                *f = clip(*o);
+            }
+            analyzer.feed_samples(&frame);
+            pending = 0;
         }
-        pending.drain(..whole);
     }
     Ok(Arc::unwrap_or_clone(analyzer.result()))
-}
-
-/// Minimal stateful linear-interpolation stereo resampler to 48 kHz.
-struct Linear {
-    /// Input samples advanced per output sample.
-    step: f64,
-    /// Position of the next output between `prev` (0) and the next input (1).
-    pos: f64,
-    prev: Option<[f64; 2]>,
-}
-
-impl Linear {
-    fn new(in_rate: u32) -> Self {
-        Self {
-            step: in_rate.max(1) as f64 / SAMPLE_RATE as f64,
-            pos: 0.0,
-            prev: None,
-        }
-    }
-
-    fn process(&mut self, input: &[i16], out: &mut Vec<i16>) {
-        if self.step == 1.0 {
-            out.extend_from_slice(&input[..input.len() & !1]);
-            return;
-        }
-        for pair in input.chunks_exact(2) {
-            let cur = [pair[0] as f64, pair[1] as f64];
-            let Some(prev) = self.prev else {
-                self.prev = Some(cur);
-                continue;
-            };
-            while self.pos < 1.0 {
-                for c in 0..2 {
-                    out.push(clip(prev[c] + (cur[c] - prev[c]) * self.pos));
-                }
-                self.pos += self.step;
-            }
-            self.pos -= 1.0;
-            self.prev = Some(cur);
-        }
-    }
 }
 
 #[cfg(test)]
@@ -424,16 +394,31 @@ mod tests {
         assert_eq!(opens.load(Ordering::Relaxed), 2);
     }
 
-    #[test]
-    fn linear_resampler_keeps_duration() {
-        let mut r = Linear::new(44_100);
-        let input = vec![1000i16; 44_100 * 2];
-        let mut out = Vec::new();
-        for chunk in input.chunks(1000) {
-            r.process(chunk, &mut out);
-        }
-        let frames = out.len() / 2;
-        assert!((frames as i64 - 48_000).abs() <= 2, "{frames}");
-        assert!(out.iter().all(|&s| s == 1000));
+    /// The same audio at 44.1 kHz and 48 kHz analyses alike: the sinc
+    /// resampler (unlike linear interpolation) keeps the spectrum, so the
+    /// K-weighted loudness and the tempo don't depend on the source rate.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn source_rate_does_not_change_the_analysis() {
+        let analyse = |rate: u32| {
+            let wav = wav_bytes(rate, &click_samples(rate, 120.0, 4, 20));
+            let handle = Handle::current();
+            tokio::task::spawn_blocking(move || {
+                let stream = Stream {
+                    body: Box::new(Cursor::new(wav)),
+                    format: Format::Encoded {
+                        hint: Some("wav".into()),
+                    },
+                    start_sample: 0,
+                    live: false,
+                };
+                decode_and_analyze(stream, &track("r"), handle, Instant::now() + OFFLINE_TIMEOUT)
+            })
+        };
+        let a = analyse(44_100).await.unwrap().expect("44.1 kHz");
+        let b = analyse(48_000).await.unwrap().expect("48 kHz");
+        let (la, lb) = (a.loudness.integrated_lufs, b.loudness.integrated_lufs);
+        assert!((la - lb).abs() <= 0.5, "44.1 kHz {la} LUFS vs 48 kHz {lb} LUFS");
+        assert!((a.rhythm.bpm - b.rhythm.bpm).abs() <= 1.0);
+        assert!((a.duration_ms - b.duration_ms).abs() <= 25);
     }
 }

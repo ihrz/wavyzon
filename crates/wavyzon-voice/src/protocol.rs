@@ -208,6 +208,8 @@ pub(crate) struct TransitionId {
 #[derive(Debug, Deserialize)]
 pub(crate) struct PrepareEpoch {
     pub epoch: u64,
+    /// Missing means 0 (DAVE off), as in Cadence.
+    #[serde(default)]
     pub protocol_version: u16,
 }
 

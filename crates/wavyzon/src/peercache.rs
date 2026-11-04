@@ -114,9 +114,19 @@ impl Pool {
         if !res.status().is_success() {
             return Err(format!("peer index status {}", res.status()));
         }
-        let body = res.bytes().await.map_err(|e| e.to_string())?;
-        if body.len() > MAX_INDEX_BYTES {
+        // Stop reading at the limit (like Cadence's LimitReader), so a bad
+        // peer can't make us buffer an unbounded body.
+        if res.content_length().is_some_and(|n| n > MAX_INDEX_BYTES as u64) {
             return Err("peer index too large".into());
+        }
+        let mut body = Vec::new();
+        let mut chunks = res.bytes_stream();
+        while let Some(chunk) = chunks.next().await {
+            let chunk = chunk.map_err(|e| e.to_string())?;
+            if body.len() + chunk.len() > MAX_INDEX_BYTES {
+                return Err("peer index too large".into());
+            }
+            body.extend_from_slice(&chunk);
         }
         serde_json::from_slice(&body).map_err(|e| e.to_string())
     }

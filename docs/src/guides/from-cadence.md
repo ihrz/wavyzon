@@ -81,6 +81,22 @@ to `WAVYZON_PLAYBACK_SOURCES`.
 ### Metrics
 
 `cadence_*` metrics are now `wavyzon_*`. Update dashboards and alerts.
+A few series also changed shape:
+
+- `host_total` counts `started`/`ended`/`refused` (Cadence:
+  `played`/`dropped`/`refused`).
+- `recommendations_total` is labelled by `outcome`
+  (`served`/`cached`/`empty`/`failed`), not by `source`.
+- The Go runtime gauges (`goroutines`, `heap_bytes`,
+  `gc_pause_total_seconds`) are replaced by `tasks` and `resident_bytes`.
+
+### Smaller behaviour changes
+
+- The default `WAVYZON_SEARCH_ORDER` ends with `soundcloud`
+  (`applemusic,spotify,deezer,soundcloud`).
+- Oversized request bodies return `413` instead of `400`.
+- `livecheck` checks only the first query unless `-bench` is given, and
+  `-rec` takes a search query instead of a Deezer seed id.
 
 ### State file
 

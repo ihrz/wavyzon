@@ -17,16 +17,21 @@ pub fn response_body(res: reqwest::Response) -> Body {
     )))
 }
 
-/// JSON decode failure.
+/// JSON decode failure: the source changed its answer, not a node fault, so
+/// it is `common` like Cadence's fallback classification.
 pub fn bad_json(source: &str, e: serde_json::Error) -> Failure {
-    Failure::fault(source, "unexpected response", Some(e.to_string()))
+    Failure::common(source, format!("{source} failed"), Some(e.to_string()))
 }
 
-/// Percent-encode `s` for a path segment or query value.
+/// Percent-encode `s` for a path segment. Like Go's `url.PathEscape`, `:` and
+/// `@` stay literal, so Deezer's `/track/isrc:XXXX` lookups go out as
+/// Cadence sent them.
 pub fn esc(s: &str) -> String {
     url::form_urlencoded::byte_serialize(s.as_bytes())
         .collect::<String>()
         .replace('+', "%20")
+        .replace("%3A", ":")
+        .replace("%40", "@")
 }
 
 /// Encode query pairs.
@@ -36,4 +41,13 @@ pub fn query(pairs: &[(&str, &str)]) -> String {
         q.append_pair(k, v);
     }
     q.finish()
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn esc_is_a_path_segment_escape() {
+        assert_eq!(super::esc("isrc:USRC17607839"), "isrc:USRC17607839");
+        assert_eq!(super::esc("a b/c?d+e@f"), "a%20b%2Fc%3Fd%2Be@f");
+    }
 }

@@ -138,7 +138,7 @@ impl Manager {
         let st = self.snapshot();
         let raw = serde_json::to_vec(&st)?;
         if let Some(dir) = path.parent().filter(|d| !d.as_os_str().is_empty()) {
-            std::fs::create_dir_all(dir)?;
+            create_private_dir(dir)?;
         }
         let tmp = path.with_extension("tmp");
         write_private(&tmp, &raw)?;
@@ -226,6 +226,19 @@ async fn restore_player(s: &Arc<Session>, sp: SavedPlayer) -> bool {
     g.set_user_data(&sp.track, sp.user_data);
     g.player.play(t, sp.position_ms.max(0), sp.paused);
     true
+}
+
+/// Create `dir` and its parents, owner-only on unix (the state file holds
+/// session ids and voice tokens). Existing directories keep their mode.
+fn create_private_dir(dir: &Path) -> std::io::Result<()> {
+    let mut b = std::fs::DirBuilder::new();
+    b.recursive(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::DirBuilderExt;
+        b.mode(0o700);
+    }
+    b.create(dir)
 }
 
 fn write_private(path: &Path, raw: &[u8]) -> std::io::Result<()> {

@@ -378,9 +378,18 @@ pub(crate) fn spawn_producer(
 
 async fn produce(rt: &Handle, shared: &Arc<DeckShared>, opener: Arc<dyn Opener>, playable: Track, start_ms: i64) {
     let cancel = shared.cancel.clone();
+    // The idle timer covers opening too (as in Cadence), so a source that
+    // never answers fails the track instead of only reporting it stuck.
     let opened = tokio::select! {
         _ = cancel.cancelled() => return,
-        r = opener.open(&playable, start_ms) => r,
+        r = tokio::time::timeout(STREAM_IDLE_TIMEOUT, opener.open(&playable, start_ms)) => match r {
+            Ok(r) => r,
+            Err(_) => Err(Failure::common(
+                &playable.source,
+                "stream stalled",
+                Some(format!("no data for {}s", STREAM_IDLE_TIMEOUT.as_secs())),
+            )),
+        },
     };
     let Stream {
         mut body,

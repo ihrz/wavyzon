@@ -17,7 +17,10 @@ pub struct Track {
     pub source: String,
     /// Source-specific identifier.
     pub identifier: String,
+    /// Missing decodes as empty, as in Cadence (hand-built encoded tracks).
+    #[serde(default)]
     pub title: String,
+    #[serde(default)]
     pub author: String,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub album: String,
@@ -169,5 +172,12 @@ mod tests {
         let enc = URL_SAFE_NO_PAD.encode(br#"{"source":"","identifier":"x","title":"","author":""}"#);
         assert!(Track::decode(&enc).is_err());
         assert!(Track::decode("!!!").is_err());
+    }
+
+    #[test]
+    fn title_and_author_are_optional() {
+        let enc = URL_SAFE_NO_PAD.encode(br#"{"source":"soundcloud","identifier":"123"}"#);
+        let t = Track::decode(&enc).unwrap();
+        assert_eq!((t.title.as_str(), t.author.as_str()), ("", ""));
     }
 }

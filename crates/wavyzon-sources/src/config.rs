@@ -178,9 +178,12 @@ impl SourcesConfig {
     /// default.
     pub fn from_lookup(get: impl Fn(&str) -> Option<String>) -> Self {
         let s = |k: &str| get(k).map(|v| v.trim().to_string()).filter(|v| !v.is_empty());
-        let flag = |k: &str, d: bool| {
-            s(k).map(|v| matches!(v.to_ascii_lowercase().as_str(), "1" | "true" | "yes" | "on"))
-                .unwrap_or(d)
+        // `1/true/yes/on` and `0/false/no/off`; anything else keeps the
+        // default, like Cadence (so a typo never silently disables a source).
+        let flag = |k: &str, d: bool| match s(k).map(|v| v.to_ascii_lowercase()).as_deref() {
+            Some("1" | "true" | "yes" | "on") => true,
+            Some("0" | "false" | "no" | "off") => false,
+            _ => d,
         };
         let num = |k: &str, d: u64| s(k).and_then(|v| v.parse().ok()).unwrap_or(d);
         let mut c = Self::default();
@@ -245,6 +248,14 @@ impl SourcesConfig {
 mod tests {
     use super::*;
     use std::collections::HashMap;
+
+    #[test]
+    fn unrecognized_flags_keep_the_default() {
+        let env: HashMap<&str, &str> = [("SOUNDCLOUD_ENABLED", "enable"), ("DEEZER_ENABLED", "Off")].into();
+        let c = SourcesConfig::from_lookup(|k| env.get(k).map(|v| v.to_string()));
+        assert!(c.soundcloud.enabled);
+        assert!(!c.deezer.enabled);
+    }
 
     #[test]
     fn defaults_and_env() {
