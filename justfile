@@ -22,6 +22,15 @@ lint:
 test *args:
     cargo test --workspace --all-features {{args}}
 
+# Unit tests (in-crate #[cfg(test)] modules) and doctests
+test-unit:
+    cargo test --workspace --all-features --lib --bins
+    cargo test --workspace --all-features --doc
+
+# Mocked integration tests (fake voice gateway, mock sources, node e2e)
+test-mock:
+    cargo test --workspace --all-features --test '*'
+
 # What CI runs: fmt-check, lint, test
 check: fmt-check lint test
 

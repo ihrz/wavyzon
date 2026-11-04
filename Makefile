@@ -7,7 +7,7 @@ IMAGE  ?= registry.gitlab.com/ihrz/wavyzon
 TAG    ?= dev
 
 .DEFAULT_GOAL := help
-.PHONY: help fmt fmt-check lint test check build release run doc deny docker docker-run compose-up compose-down clean
+.PHONY: help fmt fmt-check lint test test-unit test-mock check build release run doc deny docker docker-run compose-up compose-down clean
 
 help: ## Show this help
 	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z_-]+:.*## / {printf "  \033[36m%-13s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -23,6 +23,13 @@ lint: ## Run clippy on everything, warnings are errors
 
 test: ## Run the test suite
 	$(CARGO) test --workspace --all-features
+
+test-unit: ## Unit tests (in-crate #[cfg(test)] modules) and doctests
+	$(CARGO) test --workspace --all-features --lib --bins
+	$(CARGO) test --workspace --all-features --doc
+
+test-mock: ## Mocked integration tests (fake voice gateway, mock sources, node e2e)
+	$(CARGO) test --workspace --all-features --test '*'
 
 check: fmt-check lint test ## What CI runs: fmt-check, lint, test
 

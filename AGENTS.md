@@ -68,6 +68,8 @@ make check        # = CI: fmt --check, clippy -D warnings, tests  (or: just chec
 cargo fmt --all
 cargo clippy --workspace --all-targets --all-features -- -D warnings
 cargo test --workspace --all-features
+make test-unit    # in-crate unit tests + doctests      (CI job: unit)
+make test-mock    # crates/*/tests: mocked integration  (CI job: mock)
 cargo test -p wavyzon-sources resolver      # one crate / filter
 cargo run -p wavyzon                        # needs .env (cp .env.example .env)
 cargo run -p wavyzon --bin livecheck -- "query"   # hits real sources, needs network
@@ -197,6 +199,25 @@ peer index read; 0700 state dir; mirror fallback miss caching.
 - `#[allow(clippy::…)]` only locally, with a comment saying why.
 - No new dependency without a reason; `cargo deny` must pass (licences in
   `deny.toml`).
+
+## CI (GitLab, mirrored on GitHub Actions)
+
+Every pushed branch gets a pipeline (`.gitlab-ci.yml`):
+
+- `fmt`, `clippy` (`-D warnings`), `deny`: must pass.
+- `unit`: `cargo nextest -E 'kind(lib) | kind(bin)'` plus doctests.
+- `mock`: `cargo nextest -E 'kind(test)'`, the integration tests in
+  `crates/*/tests`, against the testkit's fake Discord voice gateway, mock
+  sources and a whole node driven over REST and WebSocket.
+- `coverage`: cargo-llvm-cov over both suites, giving a Cobertura report on
+  MR diffs and a line-coverage percentage. `allow_failure`.
+- `build-release`; on `v*` tags the `docker` image; on `main` the Pages site.
+
+Tests must stay **hermetic**: no internet. Mock HTTP with local axum servers
+and voice with `wavyzon-testkit`. Only `livecheck` touches real sources, and it
+is not a test. Nextest settings (JUnit, one retry for timing-flaky tests) are
+in `.config/nextest.toml`. When you add a test binary under `crates/*/tests`,
+it automatically lands in the `mock` job.
 
 ## Branches & workflow
 

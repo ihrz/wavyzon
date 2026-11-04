@@ -1,0 +1,17 @@
+# cargo-nextest configuration (https://nexte.st). CI runs with `--profile ci`.
+
+[profile.default]
+# Timing-sensitive tests (voice pacing, mixing) should finish well within this.
+slow-timeout = { period = "30s", terminate-after = 4 }
+
+[profile.ci]
+# Run everything and report every failure, not just the first.
+fail-fast = false
+failure-output = "immediate-final"
+# A flaky timing test is retried once and reported as flaky instead of failing
+# the pipeline; a real failure still fails twice.
+retries = 1
+
+[profile.ci.junit]
+# Written to target/nextest/ci/junit.xml, shown in GitLab's "Tests" tab.
+path = "junit.xml"

@@ -6,7 +6,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
   workflow_dispatch:
   schedule:
@@ -47,15 +47,38 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
 
+  # Same split as GitLab: unit tests (+ doctests), and the mocked integration
+  # tests (fake Discord voice gateway, mock sources, node end to end).
   test:
-    name: test
+    name: test (${{ matrix.suite }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - suite: unit
+            filter: kind(lib) | kind(bin)
+          - suite: mock
+            filter: kind(test)
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - run: sudo apt-get update -qq && sudo apt-get install -y -qq cmake
       - uses: Swatinem/rust-cache@v2
-      - run: cargo test --workspace --all-features --locked
+        with:
+          key: ${{ matrix.suite }}
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest@0.9.151
+      - run: cargo nextest run --workspace --all-features --locked --profile ci -E '${{ matrix.filter }}'
+      - if: matrix.suite == 'unit'
+        run: cargo test --workspace --all-features --locked --doc
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-${{ matrix.suite }}
+          path: target/nextest/ci/junit.xml
+          retention-days: 14
 
   build:
     name: release build

@@ -2,7 +2,8 @@
 #
 # Runs on merge requests, on the default branch and on tags:
 #   check   - rustfmt, clippy, cargo-deny
-#   test    - cargo test
+#   test    - unit tests + doctests, mocked integration tests (fake Discord
+#             voice gateway, mock sources, whole node end to end), coverage
 #   build   - release binary (kept as an artifact)
 #   publish - Docker image on v* tags, GitLab Pages on the default branch
 
@@ -11,7 +12,9 @@ workflow:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
       when: never
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    # Every pushed branch (dev, feature branches...) gets a pipeline, unless it
+    # has an open merge request (then the MR pipeline above covers it).
+    - if: $CI_COMMIT_BRANCH
     - if: $CI_COMMIT_TAG
     - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_PIPELINE_SOURCE == "web"
@@ -28,6 +31,8 @@ variables:
   CARGO_INCREMENTAL: "0"
   RUST_BACKTRACE: "1"
   CARGO_DENY_VERSION: "0.20.2"
+  NEXTEST_VERSION: "0.9.151"
+  LLVM_COV_VERSION: "0.9.1"
 
 # ---------------------------------------------------------------------------
 # Shared Rust setup: the toolchain comes from rust-toolchain.toml (rustup
@@ -89,12 +94,63 @@ advisories:
     - cargo deny check advisories
   allow_failure: true
 
-test:
+# Tests run with cargo-nextest (one process per test, JUnit report for the
+# pipeline's "Tests" tab). Nothing here touches the network: sources, the
+# Discord voice gateway and HTTP servers are mocked in-process.
+.nextest:
   extends: .rust
   stage: test
-  script:
-    - cargo test --workspace --all-features --locked
   needs: []
+  before_script:
+    - !reference [.rust, before_script]
+    - curl -fsSL "https://get.nexte.st/${NEXTEST_VERSION}/linux" | tar zxf - -C /usr/local/cargo/bin
+    - cargo nextest --version
+  artifacts:
+    when: always
+    reports:
+      junit: target/nextest/ci/junit.xml
+    expire_in: 14 days
+
+# Unit tests: the #[cfg(test)] modules inside every crate (DSP, mixer,
+# filters, resolver, httpx, config...) plus the doctests.
+unit:
+  extends: .nextest
+  script:
+    - cargo nextest run --workspace --all-features --locked --profile ci -E 'kind(lib) | kind(bin)'
+    - cargo test --workspace --all-features --locked --doc
+
+# Mocked integration tests (crates/*/tests): a fake Discord voice gateway
+# (wavyzon-testkit), mock tone sources and a real node driven over REST and
+# WebSocket end to end.
+mock:
+  extends: .nextest
+  script:
+    - cargo nextest run --workspace --all-features --locked --profile ci -E 'kind(test)'
+
+# Line coverage of the whole suite (unit + mock), shown on merge request diffs
+# and as the pipeline's coverage percentage. Informational: never blocks.
+coverage:
+  extends: .nextest
+  allow_failure: true
+  before_script:
+    - !reference [.nextest, before_script]
+    - rustup component add llvm-tools-preview
+    - curl -fsSL "https://github.com/taiki-e/cargo-llvm-cov/releases/download/v${LLVM_COV_VERSION}/cargo-llvm-cov-x86_64-unknown-linux-gnu.tar.gz" | tar zxf - -C /usr/local/cargo/bin
+  script:
+    - cargo llvm-cov nextest --workspace --all-features --locked --profile ci --no-report
+    - cargo llvm-cov report --cobertura --output-path coverage.xml
+    - cargo llvm-cov report --summary-only | tee coverage-summary.txt
+    - awk '/^TOTAL/ { print "Line coverage: " $10 }' coverage-summary.txt
+  coverage: '/Line coverage: (\d+\.\d+)%/'
+  artifacts:
+    when: always
+    reports:
+      junit: target/nextest/ci/junit.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+    paths: [coverage-summary.txt]
+    expire_in: 14 days
 
 build-release:
   extends: .rust
@@ -123,7 +179,7 @@ docker:
     DOCKER_BUILDKIT: "1"
   rules:
     - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+.*$/
-  needs: [test, clippy, deny]
+  needs: [unit, mock, clippy, deny]
   before_script:
     - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
   script:

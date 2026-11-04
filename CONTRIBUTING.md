@@ -35,6 +35,8 @@ make run                # or: cargo run -p wavyzon
 
 ```sh
 make check   # cargo fmt --check, clippy -D warnings, tests
+make test-unit   # just the unit tests (+ doctests)
+make test-mock   # just the mocked integration tests (fake voice gateway, mock sources, node e2e)
 make deny    # licences and advisories (needs cargo-deny)
 ```
 
