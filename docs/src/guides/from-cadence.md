@@ -96,6 +96,12 @@ A few series also changed shape:
   (`applemusic,spotify,deezer,soundcloud`).
 - `ytsearch:`/`ytmsearch:` follow `WAVYZON_SEARCH_ORDER` like plain text;
   Cadence sent them straight to its audio source (Deezer).
+- Mirroring is stricter: a candidate's title must match in both directions
+  (an upload called "LUTHER - NOTORIOUS UET" no longer stands in for
+  Luther's "uet"), a remix/live/sped-up version is never played for the
+  original, and ties go to the better-ranked search result. When no real
+  match exists the track fails with "no matching recording" instead of
+  playing the wrong song.
 - Oversized request bodies return `413` instead of `400`.
 - `livecheck` checks only the first query unless `-bench` is given, and
   `-rec` takes a search query instead of a Deezer seed id.
