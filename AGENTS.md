@@ -146,6 +146,13 @@ peer index read; 0700 state dir; mirror fallback miss caching.
   `413` for oversized bodies, the `livecheck` CLI.
 - Symphonia decodes with gapless trimming and skips up to 64 corrupt packets.
 
+**Ignored RustSec advisories** (`deny.toml` → `[advisories] ignore`): four
+advisories in davey 0.2.0's dependencies (libcrux-sha3/secrets, crypto-bigint
+0.5) have no compatible fix. Each has a written reason. RUSTSEC-2026-0387
+(crypto-bigint) is actually reached and is an accepted risk. On every davey
+release, try `cargo update -p davey` and remove the ignores that no longer
+apply.
+
 **Known, not done** (low priority hardening, not parity):
 
 - reqwest without HTTP/2 and keep-alive pings (Cadence forces h2).

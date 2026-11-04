@@ -15,6 +15,15 @@ unmaintained = "workspace"
 yanked = "deny"
 ignore = [
     # { id = "RUSTSEC-0000-0000", reason = "why it does not affect Wavyzon" },
+    #
+    # The four below come from davey 0.2.0 (DAVE), the latest release, which
+    # pins openmls_rust_crypto 0.5 -> hpke-rs 0.6 and RustCrypto's
+    # elliptic-curve 0.13. None has a semver-compatible fix; drop these as soon
+    # as davey moves to newer versions (re-check on every davey release).
+    { id = "RUSTSEC-2026-0207", reason = "libcrux-sha3 incremental SHAKE squeeze: hpke-rs 0.6.1 only calls one-shot shake256::<32|64> for X-Wing / ML-KEM key derivation; DAVE uses DHKEMP256 (MLS_128_DHKEMP256_AES128GCM_SHA256_P256), so the code is never reached" },
+    { id = "RUSTSEC-2026-0208", reason = "libcrux-sha3 AVX2 SHAKE-256 panic on outputs > 32 bytes not divisible by 8: only reached from hpke-rs X-Wing / ML-KEM with 32 or 64 bytes; DAVE uses DHKEMP256, never reached" },
+    { id = "RUSTSEC-2026-0212", reason = "libcrux-secrets aarch64 constant-time select: only pulled in through libcrux-sha3 above (unreached by DAVE), and only on aarch64" },
+    { id = "RUSTSEC-2026-0387", reason = "crypto-bigint 0.5 constant-time issues: REACHED (P-256 scalars for DAVE signatures and HPKE). Accepted until davey upgrades: the fix is in 0.7.6 (needs elliptic-curve 0.14), DAVE keys are generated per voice session (DaveSession::new / reinit with None) and exploitation needs fine-grained timing of the node's CPU" },
 ]
 
 [licenses]
