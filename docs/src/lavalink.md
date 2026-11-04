@@ -72,8 +72,10 @@ Cadence keep working. `plugins` lists Wavyzon plugins as `{name, version}`.
 
 **`sourceManagers`** lists Wavyzon's sources plus the alias `youtube`. Some
 clients refuse to search unless the node *claims* YouTube; the alias keeps
-them happy. Wavyzon has no YouTube source, so a `ytsearch:` query returns
-`empty`. **Set your client's default search platform to `scsearch`** (or
+them happy. Wavyzon has no YouTube source, so a `ytsearch:` (or
+`ytmsearch:`) query is treated as a plain search: it runs through
+`WAVYZON_SEARCH_ORDER` like text without a prefix. **Set your client's
+default search platform to `scsearch`** (or
 `spsearch` / `dzsearch` / `amsearch` if you want metadata searches that are
 then [mirrored](sources.md#mirroring)).
 

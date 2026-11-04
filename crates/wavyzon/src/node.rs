@@ -5,7 +5,7 @@ use std::sync::{Arc, Weak};
 use std::time::{Duration, Instant};
 
 use anyhow::Context;
-use axum::{Router, ServiceExt};
+use axum::Router;
 use futures::FutureExt;
 use futures::future::BoxFuture;
 use tokio::net::TcpListener;
@@ -170,13 +170,12 @@ impl Node {
             tokio::spawn(p.clone().run(self.stop_peers.clone()));
         }
         let stop_http = CancellationToken::new();
-        let stopped = stop_http.clone();
-        let app = ServiceExt::<axum::extract::Request>::into_make_service(self.service());
-        let mut server = tokio::spawn(async move {
-            axum::serve(listener, app)
-                .with_graceful_shutdown(async move { stopped.cancelled().await })
-                .await
-        });
+        let mut server = tokio::spawn(serve_http(
+            listener,
+            self.service(),
+            stop_http.clone(),
+            READ_HEADER_TIMEOUT,
+        ));
         tokio::select! {
             r = &mut server => {
                 self.shutdown().await;
@@ -209,5 +208,129 @@ impl Node {
         for p in &self.plugins {
             p.shutdown().await;
         }
+    }
+}
+
+/// A client must send a request's headers within this long (Cadence's
+/// `ReadHeaderTimeout`), so slow-header connections can't pile up.
+pub const READ_HEADER_TIMEOUT: Duration = Duration::from_secs(10);
+
+/// Accept HTTP/1 connections until `stop` fires, then let open requests
+/// finish (upgraded WebSockets live on in their own tasks). This is
+/// `axum::serve` plus a header-read timeout, which axum doesn't expose.
+async fn serve_http(
+    listener: TcpListener,
+    service: NormalizePath<Router>,
+    stop: CancellationToken,
+    header_timeout: Duration,
+) -> std::io::Result<()> {
+    use hyper_util::rt::{TokioIo, TokioTimer};
+    use hyper_util::service::TowerToHyperService;
+
+    let conns = tokio_util::task::TaskTracker::new();
+    loop {
+        let tcp = tokio::select! {
+            _ = stop.cancelled() => break,
+            r = listener.accept() => match r {
+                Ok((tcp, _)) => tcp,
+                Err(e) => {
+                    // Per-connection errors (reset before accept…) are
+                    // harmless; anything else (EMFILE…) gets a short pause.
+                    if !matches!(
+                        e.kind(),
+                        std::io::ErrorKind::ConnectionAborted
+                            | std::io::ErrorKind::ConnectionRefused
+                            | std::io::ErrorKind::ConnectionReset
+                    ) {
+                        tracing::error!(error = %e, "accept failed");
+                        tokio::time::sleep(Duration::from_secs(1)).await;
+                    }
+                    continue;
+                }
+            },
+        };
+        let _ = tcp.set_nodelay(true);
+        let svc = TowerToHyperService::new(service.clone());
+        let stop = stop.clone();
+        conns.spawn(async move {
+            let mut b = hyper::server::conn::http1::Builder::new();
+            b.timer(TokioTimer::new()).header_read_timeout(header_timeout);
+            let mut conn = std::pin::pin!(b.serve_connection(TokioIo::new(tcp), svc).with_upgrades());
+            tokio::select! {
+                r = conn.as_mut() => {
+                    if let Err(e) = r {
+                        tracing::debug!(error = %e, "http connection ended with an error");
+                    }
+                    return;
+                }
+                _ = stop.cancelled() => conn.as_mut().graceful_shutdown(),
+            }
+            let _ = conn.await;
+        });
+    }
+    conns.close();
+    conns.wait().await;
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    async fn start(
+        header_timeout: Duration,
+    ) -> (String, CancellationToken, tokio::task::JoinHandle<std::io::Result<()>>) {
+        let app = Router::new().route("/ok", axum::routing::get(|| async { "ok" }));
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap().to_string();
+        let stop = CancellationToken::new();
+        let task = tokio::spawn(serve_http(
+            listener,
+            NormalizePath::trim_trailing_slash(app),
+            stop.clone(),
+            header_timeout,
+        ));
+        (addr, stop, task)
+    }
+
+    #[tokio::test]
+    async fn slow_headers_are_cut_off() {
+        let (addr, stop, task) = start(Duration::from_millis(200)).await;
+        let mut slow = tokio::net::TcpStream::connect(&addr).await.unwrap();
+        slow.write_all(b"GET /ok HTTP/1.1\r\nHost: x\r\n").await.unwrap();
+        let mut buf = Vec::new();
+        let read = tokio::time::timeout(Duration::from_secs(3), slow.read_to_end(&mut buf)).await;
+        assert!(read.is_ok(), "connection with unfinished headers was kept open");
+        // Normal requests (and trailing-slash normalisation) still work.
+        let body = reqwest::get(format!("http://{addr}/ok/"))
+            .await
+            .unwrap()
+            .text()
+            .await
+            .unwrap();
+        assert_eq!(body, "ok");
+        stop.cancel();
+        tokio::time::timeout(Duration::from_secs(3), task)
+            .await
+            .unwrap()
+            .unwrap()
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn shutdown_closes_idle_keep_alive_connections() {
+        let (addr, stop, task) = start(Duration::from_secs(10)).await;
+        let mut c = tokio::net::TcpStream::connect(&addr).await.unwrap();
+        c.write_all(b"GET /ok HTTP/1.1\r\nHost: x\r\n\r\n").await.unwrap();
+        let mut buf = [0u8; 256];
+        let n = c.read(&mut buf).await.unwrap();
+        assert!(String::from_utf8_lossy(&buf[..n]).starts_with("HTTP/1.1 200"));
+        stop.cancel();
+        tokio::time::timeout(Duration::from_secs(3), task)
+            .await
+            .expect("an idle keep-alive connection held the shutdown")
+            .unwrap()
+            .unwrap();
     }
 }

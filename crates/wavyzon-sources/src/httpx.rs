@@ -269,18 +269,19 @@ impl HttpClient {
         b.build().expect("request from a parsed url builds")
     }
 
-    async fn run(
-        &self,
-        client: &reqwest::Client,
-        req: &Req,
-        timeout: Option<Duration>,
-    ) -> Result<Response, reqwest::Error> {
+    /// One attempt on `client`. Like Cadence's `ResponseHeaderTimeout`, every
+    /// attempt waits at most `header_timeout` for the response headers.
+    async fn run(&self, client: &reqwest::Client, req: &Req, timeout: Option<Duration>) -> Result<Response, Attempt> {
         let fut = client.execute(self.build(client, req, timeout));
-        fut.await
+        match tokio::time::timeout(self.opts.header_timeout, fut).await {
+            Ok(r) => r.map_err(Attempt::Failed),
+            Err(_) => Err(Attempt::NoHeaders),
+        }
     }
 
     /// Send `req`, with proxy fallback and the dead-connection retry. The
-    /// status is not checked. `timeout` bounds the whole exchange.
+    /// status is not checked. `timeout` bounds each attempt's whole exchange;
+    /// headers must arrive within `header_timeout` on every attempt.
     pub async fn execute(&self, req: &Req, timeout: Option<Duration>) -> Result<Response, HttpError> {
         self.execute_with(req, timeout, true).await
     }
@@ -290,20 +291,32 @@ impl HttpClient {
         if let Some(px) = self.proxy_usable().filter(|_| follow) {
             match self.run(px, req, timeout).await {
                 Ok(res) => return Ok(res),
-                Err(e) if e.is_timeout() && timeout.is_some() => return Err(self.convert(&req.url, e)),
-                Err(e) => self.mark_proxy_failed(&describe(&e)),
+                // The request's own deadline ran out: going direct would
+                // only overrun it (Cadence returns on a done context).
+                Err(Attempt::Failed(e)) if e.is_timeout() && timeout.is_some() => {
+                    return Err(self.convert(&req.url, e));
+                }
+                // A proxy that accepts but never answers is a failed proxy.
+                Err(e) => self.mark_proxy_failed(&e.describe(self.opts.header_timeout)),
             }
         }
         let client = if follow { &self.direct } else { &self.no_redirect };
         match self.run(client, req, timeout).await {
             Ok(res) => Ok(res),
-            Err(e) if retryable(&e) => {
-                tracing::warn!(http = %self.name, error = %describe(&e), "request failed on a pooled connection, retrying on a fresh one");
+            Err(e) if e.retryable() => {
+                tracing::warn!(http = %self.name, error = %e.describe(self.opts.header_timeout), "request failed on a pooled connection, retrying on a fresh one");
                 self.run(client, req, timeout)
                     .await
-                    .map_err(|e| self.convert(&req.url, e))
+                    .map_err(|e| self.convert_attempt(&req.url, e))
             }
-            Err(e) => Err(self.convert(&req.url, e)),
+            Err(e) => Err(self.convert_attempt(&req.url, e)),
+        }
+    }
+
+    fn convert_attempt(&self, url: &Url, e: Attempt) -> HttpError {
+        match e {
+            Attempt::NoHeaders => HttpError::Timeout { url: safe_url(url) },
+            Attempt::Failed(e) => self.convert(url, e),
         }
     }
 
@@ -369,15 +382,11 @@ impl HttpClient {
         })
     }
 
-    /// Send `req` for streaming: waits at most `header_timeout` for headers,
-    /// then hands back the response with an unbounded body. A status of 300
-    /// or more is an error.
+    /// Send `req` for streaming: each attempt waits at most `header_timeout`
+    /// for headers, then the response is handed back with an unbounded body.
+    /// A status of 300 or more is an error.
     pub async fn stream(&self, req: &Req) -> Result<Response, HttpError> {
-        let res = tokio::time::timeout(self.opts.header_timeout, self.execute(req, None))
-            .await
-            .map_err(|_| HttpError::Timeout {
-                url: safe_url(&req.url),
-            })??;
+        let res = self.execute(req, None).await?;
         let status = res.status().as_u16();
         if status >= 300 {
             return Err(HttpError::Status {
@@ -549,6 +558,32 @@ fn describe(e: &reqwest::Error) -> String {
     out
 }
 
+/// Why one attempt failed.
+enum Attempt {
+    /// No response headers within `header_timeout`.
+    NoHeaders,
+    Failed(reqwest::Error),
+}
+
+impl Attempt {
+    /// Worth one more try on a fresh connection: a dead pooled connection
+    /// (reset, EOF) or one that silently swallowed the request (no headers),
+    /// as Cadence retries "timeout awaiting response headers".
+    fn retryable(&self) -> bool {
+        match self {
+            Attempt::NoHeaders => true,
+            Attempt::Failed(e) => retryable(e),
+        }
+    }
+
+    fn describe(&self, header_timeout: Duration) -> String {
+        match self {
+            Attempt::NoHeaders => format!("no response headers within {}ms", header_timeout.as_millis()),
+            Attempt::Failed(e) => describe(e),
+        }
+    }
+}
+
 fn retryable(e: &reqwest::Error) -> bool {
     if e.is_timeout() || e.is_redirect() || e.is_builder() {
         return false;
@@ -636,6 +671,65 @@ mod tests {
         let body = c.get(&format!("{base}/ok"), &[]).await.unwrap();
         assert_eq!(&body[..], b"direct");
         assert!(c.proxy_usable().is_none(), "proxy must be skipped during the cooldown");
+    }
+
+    /// A proxy that accepts connections but never answers is marked failed
+    /// after `header_timeout` and the request goes direct.
+    #[tokio::test]
+    async fn stalled_proxy_falls_back_to_direct() {
+        let base = serve(Router::new().route("/ok", get(|| async { "direct" }))).await;
+        let stall = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = stall.local_addr().unwrap();
+        tokio::spawn(async move {
+            let mut held = Vec::new();
+            while let Ok((sock, _)) = stall.accept().await {
+                held.push(sock);
+            }
+        });
+        let c = HttpClient::new(
+            "px",
+            HttpOptions {
+                header_timeout: Duration::from_millis(300),
+                ..HttpOptions::with_proxy(Some(format!("http://{addr}")))
+            },
+        )
+        .unwrap();
+        let started = std::time::Instant::now();
+        let res = c.stream(&Req::get(&format!("{base}/ok")).unwrap()).await.unwrap();
+        assert_eq!(&res.bytes().await.unwrap()[..], b"direct");
+        assert!(started.elapsed() < Duration::from_secs(3), "{:?}", started.elapsed());
+        assert!(c.proxy_usable().is_none(), "stalled proxy must be put in cooldown");
+    }
+
+    /// A direct server that never sends headers is tried twice, then the
+    /// request fails as a timeout.
+    #[tokio::test]
+    async fn header_timeout_is_retried_once_then_fails() {
+        let stall = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = stall.local_addr().unwrap();
+        let accepted = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let n = accepted.clone();
+        tokio::spawn(async move {
+            let mut held = Vec::new();
+            while let Ok((sock, _)) = stall.accept().await {
+                n.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                held.push(sock);
+            }
+        });
+        let c = HttpClient::new(
+            "slow",
+            HttpOptions {
+                header_timeout: Duration::from_millis(200),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let err = c
+            .stream(&Req::get(&format!("http://{addr}/x")).unwrap())
+            .await
+            .unwrap_err();
+        assert!(matches!(err, HttpError::Timeout { .. }), "{err:?}");
+        assert_eq!(accepted.load(std::sync::atomic::Ordering::SeqCst), 2);
     }
 
     #[tokio::test]

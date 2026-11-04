@@ -61,9 +61,12 @@ A Spotify/Apple/Deezer track found no recording on your
 `WAVYZON_PLAYBACK_SOURCES`. Add a searchable playback source (a plugin) or
 play a direct source (an `http` link or a `local:` file).
 
-**`ytsearch:` returns nothing**
-Wavyzon has no YouTube source. Use `scsearch:` or another prefix; set your
-client's default search platform accordingly.
+**`ytsearch:` returns odd results or nothing**
+Wavyzon has no YouTube source: `ytsearch:`/`ytmsearch:` are plain searches
+through `WAVYZON_SEARCH_ORDER`, so they return whatever the first source in
+that order finds (or nothing if every source is down). Use `scsearch:` or
+another explicit prefix, and set your client's default search platform
+accordingly.
 
 **A radio stream stops after a while**
 Some Icecast servers close idle or slow connections. Check

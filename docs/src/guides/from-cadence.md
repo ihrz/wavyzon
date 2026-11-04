@@ -94,6 +94,8 @@ A few series also changed shape:
 
 - The default `WAVYZON_SEARCH_ORDER` ends with `soundcloud`
   (`applemusic,spotify,deezer,soundcloud`).
+- `ytsearch:`/`ytmsearch:` follow `WAVYZON_SEARCH_ORDER` like plain text;
+  Cadence sent them straight to its audio source (Deezer).
 - Oversized request bodies return `413` instead of `400`.
 - `livecheck` checks only the first query unless `-bench` is given, and
   `-rec` takes a search query instead of a Deezer seed id.

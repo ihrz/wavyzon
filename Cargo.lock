@@ -3191,6 +3191,8 @@ dependencies = [
  "anyhow",
  "axum",
  "futures",
+ "hyper",
+ "hyper-util",
  "parking_lot 0.12.5",
  "rand 0.9.5",
  "reqwest",
