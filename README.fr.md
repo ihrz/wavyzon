@@ -67,7 +67,7 @@ le nœud audio en Go derrière *greed*, par l'équipe [iHorizon](https://gitlab.
 
 - Platine B pré-chargée, fondus armés sur la trame exacte d'un repère
 - Courbes à puissance constante ou linéaires, bass swap, balayages passe-haut, calage du volume et du tempo
-- `nextTrack` **sans blanc** (gapless), interventions vocales de DJ avec atténuation de la musique
+- `nextTrack` **sans blanc** (gapless) avec fondu enchaîné automatique de 3 s (réglable), interventions vocales de DJ avec atténuation de la musique
 
 ### 🔍 **Sources**
 
@@ -151,6 +151,7 @@ et la [référence complète](docs/src/configuration.md) (en anglais).
 | `WAVYZON_BUFFER_MS` | `10000` | Audio décodé mis en tampon par platine |
 | `WAVYZON_BITRATE` | `96000` | Débit Opus par défaut |
 | `WAVYZON_PLAYOUT_DELAY_MS` | `0` | Délai mesuré entre Discord et l'oreille, ajouté à `audibleAt` |
+| `WAVYZON_CROSSFADE_MS` | `3000` | Fondu enchaîné automatique vers le `nextTrack` (`0` = gapless strict) |
 | `WAVYZON_AUDIO_CACHE_DIR` | désactivé | Cache disque des pistes rejouées |
 | `WAVYZON_STATE_FILE` | désactivé | Sauvegarde des sessions à l'arrêt, reprise au démarrage |
 | `WAVYZON_LOG_LEVEL` | `info` | `debug`, `info`, `warn` ou `error` |

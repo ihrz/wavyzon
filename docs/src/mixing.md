@@ -18,7 +18,7 @@ Wavyzon executes it to the frame.
 | Technique | API | Overlap | Use for |
 | --- | --- | --- | --- |
 | Normal | `TrackEndEvent{finished}` → play next | none, small gap | simple queues |
-| Gapless | `"nextTrack": {"encoded": …}` on a player update | none, **no gap** | albums, live sets, DJ mixes |
+| Gapless / automatic crossfade | `"nextTrack": {"encoded": …}` on a player update | `WAVYZON_CROSSFADE_MS` (3 s), or none with `0` | everyday queues; `0` for albums and live sets |
 | Crossfade | `mix/deckb` + `mix/crossfade` | yes | automix, radio-style transitions |
 
 ### Gapless
@@ -32,6 +32,25 @@ The next track is resolved and pre-buffered in the background. When the
 current track ends, it starts on the very next frame, and you get
 `TrackEndEvent{finished}` followed by `TrackStartEvent` and
 `TrackAudibleEvent`. `{ "encoded": null }` clears it.
+
+### Automatic crossfade
+
+With `WAVYZON_CROSSFADE_MS` (default `3000`), the next track does not wait
+for the last frame: it fades in (equal-power) that long before the current
+track ends, like Tidal or Spotify. Your bot changes nothing and sees the same
+events as a gapless swap, sent when the fade completes: `TrackEndEvent{finished}`
+for the old track, then playing the next track of its queue adopts the one
+already playing (no restart). With `wavyzonEvents` you also get
+`MixStartedEvent` / `MixPromotedEvent`.
+
+It needs the track's duration, so streams and tracks of unknown length keep
+the gapless swap, as do tracks shorter than twice the fade. A seek during the
+fade cancels it (the seek is for the current track); a manual crossfade or a
+cued deck B takes precedence. Set it to `0` for strict gapless (albums,
+live sets).
+
+Plain Lavalink clients that never send `nextTrack` are not affected: the node
+cannot fade into a track it does not know yet.
 
 ## Crossfades step by step
 

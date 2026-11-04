@@ -73,6 +73,9 @@ rotation and benching, same range seeks).
 - `WAVYZON_PLAYBACK_SOURCES` replaces Cadence's Deezer-first playback with
   SoundCloud fallback.
 - `WAVYZON_LOG_FORMAT` (`json`/`pretty`) and `RUST_LOG` are new.
+- `WAVYZON_CROSSFADE_MS` (default `3000`): the `nextTrack` crossfades in
+  before the current track ends instead of Cadence's strict gapless swap.
+  Set it to `0` for Cadence's behaviour.
 - `/v1/cache/index` keys are Wavyzon's (`<sha256 prefix>-<format>`), so a
   Cadence node and a Wavyzon node can't share a peer cache.
 

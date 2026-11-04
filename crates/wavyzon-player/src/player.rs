@@ -65,6 +65,10 @@ pub struct PlayerConfig {
     /// How long a gapless next track waits for the client's `play` of it
     /// before it is announced anyway (default 5 s).
     pub adopt_window: Duration,
+    /// Automatic crossfade into the gapless next track: when one is preloaded
+    /// (`nextTrack`), deck A fades into it this long before its end instead of
+    /// cutting over on the last frame. `0` (the default) keeps strict gapless.
+    pub crossfade: Duration,
 }
 
 impl PlayerConfig {
@@ -90,6 +94,7 @@ impl PlayerConfig {
             plugin_filters: Arc::new(FilterRegistry::new()),
             runtime,
             adopt_window: Duration::from_secs(5),
+            crossfade: Duration::ZERO,
         }
     }
 }
@@ -245,6 +250,10 @@ pub(crate) struct Inner {
     pub next_inst: u64,
     pub adopt: Option<Adoption>,
     pub next_gen: u64,
+    /// The running fade is an automatic crossfade into the next track: its
+    /// promotion ends deck A with `finished` and waits for adoption, like a
+    /// gapless swap, instead of `replaced`.
+    pub auto_mix: bool,
 }
 
 /// One guild's player.
@@ -323,6 +332,7 @@ impl Player {
                 next_inst: 0,
                 adopt: None,
                 next_gen: 0,
+                auto_mix: false,
             }),
         })
     }
@@ -531,6 +541,7 @@ impl Player {
         }
         s.fade = None;
         s.host = None;
+        s.auto_mix = false;
     }
 
     fn clear_mix_locked(&self, s: &mut Inner) {
@@ -625,14 +636,17 @@ impl Player {
 
     /// Seek deck A to `ms` (a new deck opens there; plugin filters are kept
     /// and reset). A running crossfade is completed first, so the seek lands
-    /// on the incoming track; an armed one is dropped.
+    /// on the incoming track; an armed one is dropped, and so is an automatic
+    /// crossfade into the next track (the seek is for the current track).
     pub fn seek(&self, ms: i64) -> Result<(), PlayerError> {
         let mut g = self.inner.lock();
         let s = &mut *g;
         if s.active.is_none() {
             return Err(PlayerError::NothingToMix);
         }
-        if s.fade.is_some() && s.incoming.is_some() {
+        // An automatic crossfade is dropped instead: the client does not know
+        // the next track started, so its seek targets the current one.
+        if s.fade.is_some() && s.incoming.is_some() && !s.auto_mix {
             self.promote_locked(s);
         }
         self.drop_mix_locked(s);
@@ -740,6 +754,7 @@ impl Player {
         if s.fade.is_some() && s.incoming.is_some() {
             self.promote_locked(s);
         }
+        s.auto_mix = false;
         if host.is_some()
             && let Some(a) = &s.active
         {
@@ -841,6 +856,7 @@ impl Player {
     fn frame_locked(&self, s: &mut Inner, out: &mut Frame) -> Option<FrameInfo> {
         self.apply_ramp_locked(s);
         self.expire_adoption_locked(s);
+        self.auto_crossfade_locked(s);
         self.release_pending_locked(s);
         let vol = s.volume as f64 / 100.0;
         if s.host.is_some() && s.fade.is_some() && s.incoming.is_some() {
@@ -947,6 +963,10 @@ impl Player {
     }
 
     pub(crate) fn promote_locked(&self, s: &mut Inner) {
+        let auto = std::mem::take(&mut s.auto_mix);
+        if s.incoming.is_some() {
+            self.flush_adoption_locked(s);
+        }
         let old = s.active.take();
         let old_inst = s.active_inst;
         if let Some(h) = &s.host
@@ -982,9 +1002,16 @@ impl Player {
             e.into = Some(into.clone());
             e.into_ms = into_ms;
             self.emit(e);
-            self.emit(end_event(&tr, old_inst, EndReason::Replaced));
+            let reason = if auto { EndReason::Finished } else { EndReason::Replaced };
+            self.emit(end_event(&tr, old_inst, reason));
         }
-        self.emit(tev(EventType::TrackStartEvent, &into, s.active_inst));
+        if auto {
+            // As after a gapless swap: the client answers `finished` by
+            // playing its next track, which adopts this one.
+            self.hold_for_adoption_locked(s, &into);
+        } else {
+            self.emit(tev(EventType::TrackStartEvent, &into, s.active_inst));
+        }
     }
 
     fn apply_ramp_locked(&self, s: &mut Inner) {

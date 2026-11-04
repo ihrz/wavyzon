@@ -84,6 +84,8 @@ pub struct Deps {
     pub buffer_frames: usize,
     pub playout_delay: Duration,
     pub pause_fade: Duration,
+    /// Automatic crossfade into the next track (`0` = gapless).
+    pub crossfade: Duration,
     pub update_interval: Duration,
     /// Loudness normalisation target in LUFS; `None` disables it.
     pub normalize_lufs: Option<f64>,
@@ -371,6 +373,7 @@ impl Session {
             cfg.buffer_frames = d.buffer_frames;
             cfg.playout_delay = d.playout_delay;
             cfg.pause_fade = d.pause_fade;
+            cfg.crossfade = d.crossfade;
             cfg.plugin_filters = d.filters.clone();
             if let Some(target) = d.normalize_lufs {
                 cfg.target_lufs = target;

@@ -5,9 +5,14 @@
 //! track of its queue. When that is the track that already took over, the
 //! `play` *adopts* it (no restart); its `TrackStartEvent` (and a held-back
 //! `TrackAudibleEvent`) are sent then, or when the adoption window closes.
+//!
+//! With [`PlayerConfig::crossfade`](crate::PlayerConfig::crossfade) set, the
+//! next track fades in that long before the current one ends instead; the
+//! events are the same as for the gapless swap, sent when the fade completes.
 
 use std::time::Instant;
 
+use wavyzon_audio::dsp::{FadeCurve, TransitionProfile};
 use wavyzon_plugin::{EndReason, Event, EventType, Track};
 
 use crate::events::tev;
@@ -71,6 +76,7 @@ impl Player {
             s.next_inst = 0;
             return false;
         }
+        self.flush_adoption_locked(s);
         let (Some(old), Some(next)) = (s.active.take(), s.next.take()) else {
             return false;
         };
@@ -78,17 +84,77 @@ impl Player {
         s.active_inst = s.next_inst;
         s.next_inst = 0;
         s.active_gain = 1.0;
-        s.adopt = Some(Adoption {
-            encoded: next.track.encode(),
-            inst: s.active_inst,
-            until: Instant::now() + self.cfg.adopt_window,
-            audible: None,
-        });
+        let into = next.track.clone();
         s.active = Some(next);
         let tr = old.track.clone();
         drop(old);
         self.emit(end_event(&tr, old_inst, EndReason::Finished));
+        self.hold_for_adoption_locked(s, &into);
         true
+    }
+
+    /// Announce a deck A track still waiting for adoption, now: call before
+    /// deck A changes, so its `TrackStartEvent` is never lost or attributed
+    /// to the next track.
+    pub(crate) fn flush_adoption_locked(&self, s: &mut Inner) {
+        if let Some(a) = s.adopt.take()
+            && s.active.is_some()
+            && s.active_inst == a.inst
+        {
+            self.announce_locked(s, a);
+        }
+    }
+
+    /// Hold back the `TrackStartEvent` of `into` (now on deck A) until the
+    /// client plays it or the adoption window closes.
+    pub(crate) fn hold_for_adoption_locked(&self, s: &mut Inner, into: &Track) {
+        s.adopt = Some(Adoption {
+            encoded: into.encode(),
+            inst: s.active_inst,
+            until: Instant::now() + self.cfg.adopt_window,
+            audible: None,
+        });
+    }
+
+    /// Start the automatic crossfade into the next track when deck A is
+    /// [`PlayerConfig::crossfade`](crate::PlayerConfig::crossfade) from its
+    /// end. Only for tracks with a known duration at least twice the fade;
+    /// anything else (streams, short tracks, a manual mix in progress or
+    /// cued) keeps the gapless swap.
+    pub(crate) fn auto_crossfade_locked(&self, s: &mut Inner) {
+        let xf = self.cfg.crossfade.as_millis() as i64;
+        if xf <= 0
+            || s.fade.is_some()
+            || s.incoming.is_some()
+            || s.pending.is_some()
+            || s.cued.is_some()
+            || s.host.is_some()
+        {
+            return;
+        }
+        let (Some(a), Some(n)) = (&s.active, &s.next) else {
+            return;
+        };
+        if a.failure().is_some() || n.failure().is_some() || a.playable.is_stream {
+            return;
+        }
+        let dur = a.playable.duration_ms;
+        if dur < 2 * xf || a.position_ms() < dur - xf {
+            return;
+        }
+        let Some(next) = s.next.take() else { return };
+        let inst = std::mem::replace(&mut s.next_inst, 0);
+        self.begin_fade_locked(
+            s,
+            next,
+            inst,
+            xf,
+            FadeCurve::EqualPower,
+            TransitionProfile::default(),
+            1.0,
+            None,
+        );
+        s.auto_mix = true;
     }
 
     fn announce_locked(&self, s: &Inner, a: Adoption) {

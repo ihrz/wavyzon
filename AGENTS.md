@@ -157,6 +157,10 @@ peer index read; 0700 state dir; mirror fallback miss caching.
 - New: HTTP and local sources, plugins, `pluginFilters` (an unknown or
   rejected plugin filter is a documented `400`), `closeReason` on `/v1`
   `WebSocketClosedEvent`.
+- `WAVYZON_CROSSFADE_MS` (default 3000): the `nextTrack` crossfades in before
+  the current track ends (`auto_crossfade_locked` in `gapless.rs`), with the
+  same `finished` + adoption events as a gapless swap. `0` = Cadence's strict
+  gapless.
 - `ytsearch:`/`ytmsearch:` are plain searches through `WAVYZON_SEARCH_ORDER`
   (a test pins this).
 - Metric labels for `host_total` and `recommendations_total`, runtime gauges,

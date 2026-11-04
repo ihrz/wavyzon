@@ -28,6 +28,8 @@ pub struct Config {
     pub buffer_ms: i64,
     pub playout_delay: Duration,
     pub pause_fade: Duration,
+    /// `WAVYZON_CROSSFADE_MS`: automatic crossfade into the next track.
+    pub crossfade: Duration,
     pub bitrate: i32,
     pub resume_timeout: Duration,
     pub update_interval: Duration,
@@ -127,6 +129,7 @@ impl Config {
             buffer_ms: num(get, "WAVYZON_BUFFER_MS", 10_000)?.clamp(1_000, 60_000),
             playout_delay: ms(num(get, "WAVYZON_PLAYOUT_DELAY_MS", 0)?),
             pause_fade: ms(num(get, "WAVYZON_PAUSE_FADE_MS", 0)?.clamp(0, 2_000)),
+            crossfade: ms(num(get, "WAVYZON_CROSSFADE_MS", 3_000)?.clamp(0, 12_000)),
             bitrate: num(get, "WAVYZON_BITRATE", 96_000)?.clamp(MIN_BITRATE as i64, MAX_BITRATE as i64) as i32,
             resume_timeout: Duration::from_secs(num(get, "WAVYZON_RESUME_TIMEOUT_SECONDS", 300)?.max(1) as u64),
             update_interval: ms(num(get, "WAVYZON_UPDATE_INTERVAL_MS", 1_000)?.max(250)),
@@ -212,6 +215,7 @@ mod tests {
         assert_eq!(c.bitrate, 96_000);
         assert_eq!(c.resume_timeout, Duration::from_secs(300));
         assert_eq!(c.update_interval, Duration::from_secs(1));
+        assert_eq!(c.crossfade, Duration::from_secs(3));
         assert_eq!(c.data_dir, PathBuf::from("./data"));
         assert_eq!(c.log_format, LogFormat::Json);
         assert!(c.normalize);
@@ -237,6 +241,7 @@ mod tests {
             ("WAVYZON_RESUME_TIMEOUT_SECONDS", "60"),
             ("WAVYZON_PLAYOUT_DELAY_MS", "80"),
             ("WAVYZON_PAUSE_FADE_MS", "99999"),
+            ("WAVYZON_CROSSFADE_MS", "99999"),
             ("WAVYZON_UPDATE_INTERVAL_MS", "10"),
             ("WAVYZON_BITRATE", "1000000"),
             ("WAVYZON_SEARCH_ORDER", "deezer, spotify"),
@@ -251,6 +256,7 @@ mod tests {
         assert_eq!(c.resume_timeout, Duration::from_secs(60));
         assert_eq!(c.playout_delay, Duration::from_millis(80));
         assert_eq!(c.pause_fade, Duration::from_secs(2));
+        assert_eq!(c.crossfade, Duration::from_secs(12));
         assert_eq!(c.update_interval, Duration::from_millis(250));
         assert_eq!(c.bitrate, 384_000);
         assert_eq!(c.sources.search_order, ["deezer", "spotify"]);

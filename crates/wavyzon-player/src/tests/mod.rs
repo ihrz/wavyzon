@@ -12,6 +12,7 @@ use wavyzon_plugin::{Event, EventType, Failure, Format, Stream, Track};
 
 use crate::{IdentityResolver, Opener, Player, PlayerConfig, Resolver};
 
+mod auto_crossfade;
 mod filter_ramp;
 mod gapless;
 mod host;

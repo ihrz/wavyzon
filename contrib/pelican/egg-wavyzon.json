@@ -236,6 +236,20 @@
             "sort": 18
         },
         {
+            "name": "Fondu encha\u00een\u00e9 automatique (ms)",
+            "description": "Fondu vers le nextTrack avant la fin du morceau, comme Tidal (0-12000, 0 = gapless strict).",
+            "env_variable": "WAVYZON_CROSSFADE_MS",
+            "default_value": "3000",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": [
+                "required",
+                "integer",
+                "between:0,12000"
+            ],
+            "sort": 39
+        },
+        {
             "name": "Fondu pause/reprise (ms)",
             "description": "0 = pause instantan\u00e9e (0-2000).",
             "env_variable": "WAVYZON_PAUSE_FADE_MS",

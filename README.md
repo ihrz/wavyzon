@@ -66,7 +66,7 @@ team.
 
 - Pre-buffered deck B, crossfades armed on the exact frame of a cue
 - Equal-power or linear curves, bass swap, high-pass sweeps, loudness and tempo matching
-- **Gapless** `nextTrack`, DJ voice-overs with ducking
+- **Gapless** `nextTrack` with an automatic 3 s crossfade (configurable), DJ voice-overs with ducking
 
 ### 🔍 **Sources**
 
@@ -150,6 +150,7 @@ and the [full reference](docs/src/configuration.md).
 | `WAVYZON_BUFFER_MS` | `10000` | Decoded audio buffered per deck |
 | `WAVYZON_BITRATE` | `96000` | Default Opus bitrate |
 | `WAVYZON_PLAYOUT_DELAY_MS` | `0` | Measured Discord-to-ear delay, added to `audibleAt` |
+| `WAVYZON_CROSSFADE_MS` | `3000` | Automatic crossfade into the `nextTrack` (`0` = strict gapless) |
 | `WAVYZON_AUDIO_CACHE_DIR` | off | Disk cache for repeat-played tracks |
 | `WAVYZON_STATE_FILE` | off | Save sessions on shutdown, resume on start |
 | `WAVYZON_LOG_LEVEL` | `info` | `debug`, `info`, `warn` or `error` |

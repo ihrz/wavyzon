@@ -112,6 +112,9 @@ variables = [
         ["nullable", "string", "max:500"]),
     var(38, "Secret du cache partagé", "WAVYZON_CACHE_SECRET", "",
         "Secret identique sur tous les nœuds, exigé pour WAVYZON_CACHE_PEERS.", ["nullable", "string", "max:200"]),
+    var(39, "Fondu enchaîné automatique (ms)", "WAVYZON_CROSSFADE_MS", "3000",
+        "Fondu vers le nextTrack avant la fin du morceau, comme Tidal (0-12000, 0 = gapless strict).",
+        ["required", "integer", "between:0,12000"]),
 ]
 variables.sort(key=lambda v: v["name"].lower())
 

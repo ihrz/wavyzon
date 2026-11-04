@@ -93,6 +93,7 @@ impl Node {
             buffer_frames: config.buffer_frames(),
             playout_delay: config.playout_delay,
             pause_fade: config.pause_fade,
+            crossfade: config.crossfade,
             update_interval: config.update_interval,
             normalize_lufs: config.normalize.then_some(config.normalize_lufs as f64),
             metrics: metrics.clone(),

@@ -392,7 +392,7 @@ updated player (as above).
 | `filters` | Replaces the whole filter set. See [Filters](../filters.md). Changes glide, they don't jump |
 | `voice` | Discord voice credentials from `VOICE_SERVER_UPDATE` (`token`, `endpoint`) and `VOICE_STATE_UPDATE` (`sessionId`, `channelId`). `bitrate` is optional |
 | `bitrate` | Opus bitrate in bps (16 000–384 000), remembered across voice updates |
-| `nextTrack.encoded` | Preload a track that starts on the **exact frame** the current one ends (gapless). `null` clears it |
+| `nextTrack.encoded` | Preload the next track: it crossfades in over `WAVYZON_CROSSFADE_MS` before the current one ends, or starts on the **exact frame** it ends (gapless) when that is `0`. `null` clears it |
 | `analyze` | Analyse the playing audio live (BPM, key, sections…), results at `/v1/mix/analysis/…` |
 
 Query `noReplace=true`: ignore `track` if something is already playing.

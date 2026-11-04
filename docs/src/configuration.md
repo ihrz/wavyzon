@@ -34,6 +34,7 @@ These are Cadence's settings with the `CADENCE_` prefix renamed to
 | `WAVYZON_BITRATE` | `96000` | 16 000 – 384 000 | Opus bitrate used when the bot doesn't send one (`voice.bitrate` or `bitrate` in a player update). |
 | `WAVYZON_PLAYOUT_DELAY_MS` | `0` | ≥ 0 | Measured delay between Discord receiving audio and listeners hearing it. Added to every `audibleAt`. See [the wire clock](wire-clock.md#playout-delay). |
 | `WAVYZON_PAUSE_FADE_MS` | `0` | 0 – 2 000 | Fade out on pause and back in on resume. `0` pauses instantly. |
+| `WAVYZON_CROSSFADE_MS` | `3000` | 0 – 12 000 | Automatic crossfade into the `nextTrack`: it fades in this long before the current track ends. `0` keeps strict gapless. See [mixing](mixing.md#automatic-crossfade). |
 | `WAVYZON_UPDATE_INTERVAL_MS` | `1000` | ≥ 250 | How often `playerUpdate` is sent while a player is playing. An update is also sent right after every event. |
 | `WAVYZON_RESUME_TIMEOUT_SECONDS` | `300` | > 0 | How long players survive a disconnected client when resuming is enabled. Clients can override it per session. |
 | `WAVYZON_NORMALIZE` | `true` | | Level every track to the same loudness, using its analysis. |
