@@ -1,0 +1,22 @@
+[package]
+name = "wavyzon-analysis"
+description = "Track analysis (tempo, key, structure, loudness fingerprints) for Wavyzon"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[dependencies]
+wavyzon-plugin.workspace = true
+wavyzon-audio.workspace = true
+futures.workspace = true
+parking_lot.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true

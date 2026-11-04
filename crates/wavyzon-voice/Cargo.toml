@@ -1,0 +1,39 @@
+[package]
+name = "wavyzon-voice"
+description = "Discord voice for Wavyzon: gateway v8, UDP/RTP transport, DAVE end-to-end encryption and the 20 ms send loop"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[features]
+default = ["dave"]
+## DAVE end-to-end encryption through the `davey` crate. Without it every
+## dial reports `Error::NoDave`, and Discord rejects the voice session.
+dave = ["dep:davey"]
+
+[dependencies]
+wavyzon-plugin.workspace = true
+wavyzon-audio.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+tokio-tungstenite.workspace = true
+rustls.workspace = true
+futures.workspace = true
+parking_lot.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+aes-gcm.workspace = true
+chacha20poly1305.workspace = true
+davey = { workspace = true, optional = true }
+
+[dev-dependencies]
+openmls.workspace = true
+openmls_basic_credential.workspace = true
+openmls_rust_crypto.workspace = true
+davey.workspace = true
+parking_lot.workspace = true

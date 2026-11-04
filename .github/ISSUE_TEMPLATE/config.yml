@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/ihrz/wavyzon/security/advisories/new
+    about: Please report security problems privately, not in a public issue (see SECURITY.md).
+  - name: Primary repository on GitLab
+    url: https://gitlab.com/ihrz/wavyzon/-/issues
+    about: GitHub is a mirror. Issues are welcome here too, but GitLab is where development happens.
+  - name: iHorizon support server
+    url: http://discord.gg/ihorizon
+    about: Ask quick questions and chat with the team on Discord.

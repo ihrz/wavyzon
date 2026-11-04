@@ -1,0 +1,70 @@
+[workspace]
+resolver = "3"
+members = ["crates/*", "plugins/*"]
+default-members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "CC-BY-NC-SA-4.0"
+authors = ["Anaïs Saraiva", "The iHorizon Team"]
+repository = "https://gitlab.com/ihrz/wavyzon"
+homepage = "https://gitlab.com/ihrz/wavyzon"
+
+[workspace.dependencies]
+# internal crates
+wavyzon-plugin = { path = "crates/wavyzon-plugin", version = "0.1.0" }
+wavyzon-audio = { path = "crates/wavyzon-audio", version = "0.1.0" }
+wavyzon-analysis = { path = "crates/wavyzon-analysis", version = "0.1.0" }
+wavyzon-voice = { path = "crates/wavyzon-voice", version = "0.1.0" }
+wavyzon-sources = { path = "crates/wavyzon-sources", version = "0.1.0" }
+wavyzon-player = { path = "crates/wavyzon-player", version = "0.1.0" }
+
+# runtime
+tokio = { version = "1.54", features = ["full"] }
+tokio-util = { version = "0.7", features = ["io", "io-util", "rt"] }
+futures = "0.3"
+async-trait = "0.1"
+bytes = "1"
+parking_lot = "0.12"
+arc-swap = "1"
+
+# serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+base64 = "0.22"
+
+# http
+axum = { version = "0.8", features = ["ws", "macros"] }
+tower-http = { version = "0.6", features = ["trace", "cors", "normalize-path"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json", "stream", "gzip", "socks"] }
+tokio-tungstenite = { version = "0.27", features = ["rustls-tls-webpki-roots"] }
+# crypto provider for the voice gateway's wss:// (tokio-tungstenite enables none)
+rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
+url = "2"
+
+# errors / logs
+thiserror = "2"
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# audio
+symphonia = { version = "0.5", default-features = false, features = ["mp3", "aac", "isomp4", "flac", "vorbis", "ogg", "wav", "pcm", "adpcm"] }
+audiopus = "0.3.0-rc.0"
+
+# crypto / voice
+aes-gcm = "0.10"
+chacha20poly1305 = "0.10"
+davey = "0.2"
+# test-only: plays Discord's DAVE external sender in wavyzon-voice tests
+openmls = "0.8.1"
+openmls_basic_credential = "0.5"
+openmls_rust_crypto = "0.5.1"
+rand = "0.9"
+
+# misc
+regex = "1"
+sha2 = "0.10"
+hex = "0.4"

@@ -1,0 +1,36 @@
+# Run Wavyzon with Docker Compose:
+#   cp .env.example .env   # set WAVYZON_PASSWORD
+#   docker compose up -d
+# Then point your Lavalink v4 client at http://<host>:2333 with that password.
+
+services:
+  wavyzon:
+    image: registry.gitlab.com/ihrz/wavyzon:latest
+    build:
+      context: .
+    container_name: wavyzon
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Inside the container these must stay as they are; change the published
+      # port below instead.
+      WAVYZON_ADDRESS: 0.0.0.0:2333
+      WAVYZON_DATA_DIR: /var/lib/wavyzon
+      # WAVYZON_AUDIO_CACHE_DIR: /var/lib/wavyzon/cache
+      # WAVYZON_LOCAL_ROOT: /music
+    ports:
+      # Bind to localhost only; expose it wider only if your bot runs elsewhere.
+      - "127.0.0.1:2333:2333"
+    volumes:
+      - wavyzon-data:/var/lib/wavyzon
+      # - /path/to/music:/music:ro
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+volumes:
+  wavyzon-data:

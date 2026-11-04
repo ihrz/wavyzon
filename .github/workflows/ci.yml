@@ -1,0 +1,105 @@
+name: CI
+
+# GitHub is a mirror of https://gitlab.com/ihrz/wavyzon; this runs the same
+# checks as .gitlab-ci.yml so pull requests opened here get feedback too.
+# Releases (Docker image, Pages) are published from GitLab only.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 5 * * 1" # weekly advisory check
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+  RUST_BACKTRACE: "1"
+
+jobs:
+  fmt:
+    name: rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - run: cargo fmt --all --check
+
+  clippy:
+    name: clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq cmake
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq cmake
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --workspace --all-features --locked
+
+  build:
+    name: release build
+    runs-on: ubuntu-latest
+    needs: [fmt, clippy]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq cmake
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --release --locked -p wavyzon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wavyzon-x86_64-linux
+          path: |
+            target/release/wavyzon
+            LICENSE
+            NOTICE
+          retention-days: 14
+
+  deny:
+    name: cargo-deny (${{ matrix.checks }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        checks: [advisories, bans licenses sources]
+    # New advisories should not block unrelated pull requests.
+    continue-on-error: ${{ matrix.checks == 'advisories' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check ${{ matrix.checks }}
+
+  docker:
+    name: docker build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

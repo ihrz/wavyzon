@@ -1,0 +1,26 @@
+[book]
+title = "Wavyzon"
+description = "Documentation of Wavyzon, a standalone audio node for Discord bots, written in Rust"
+authors = ["Anaïs Saraiva", "The iHorizon Team"]
+language = "en"
+src = "src"
+
+[build]
+build-dir = "book"
+create-missing = false
+
+[output.html]
+git-repository-url = "https://gitlab.com/ihrz/wavyzon"
+git-repository-icon = "fab-gitlab"
+edit-url-template = "https://gitlab.com/ihrz/wavyzon/-/edit/main/docs/{path}"
+site-url = "/wavyzon/docs/"
+default-theme = "light"
+preferred-dark-theme = "ayu"
+no-section-label = false
+
+[output.html.fold]
+enable = true
+level = 1
+
+[output.html.search]
+enable = true

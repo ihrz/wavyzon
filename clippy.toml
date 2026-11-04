@@ -1,0 +1,11 @@
+# The MSRV is read from `rust-version` in Cargo.toml; don't repeat it here.
+
+# Audio and voice code passes many small parameters (sample rate, channels,
+# frame size, gain, ...). Raise the threshold rather than bundling them artificially.
+too-many-arguments-threshold = 10
+type-complexity-threshold = 400
+
+# Tests may unwrap freely.
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-dbg-in-tests = true

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Wavyzon">
+  <title>Wavyzon</title>
+  <defs>
+    <linearGradient id="wz-grad" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7C5CFF"/>
+      <stop offset="1" stop-color="#22D3EE"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(0 0) scale(1.0)">
+    <rect width="512" height="512" rx="120" fill="url(#wz-grad)"/>
+    <path d="M256 208C286 208 290 344 320 344S364 172 412 172" fill="none" stroke="#F6F5FF" stroke-opacity="0.62" stroke-width="48" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M100 172C148 172 150 344 192 344S226 208 256 208" fill="none" stroke="#F6F5FF" stroke-width="48" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

@@ -1,0 +1,39 @@
+# Normalise line endings to LF in the repository.
+* text=auto eol=lf
+
+*.rs     text eol=lf diff=rust
+*.toml   text eol=lf
+*.md     text eol=lf diff=markdown
+*.yml    text eol=lf
+*.yaml   text eol=lf
+*.json   text eol=lf
+*.sh     text eol=lf
+*.svg    text eol=lf
+Makefile text eol=lf
+justfile text eol=lf
+Dockerfile text eol=lf
+
+# Windows scripts keep CRLF.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary files: no line ending conversion, no textual diff.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.webp binary
+*.pdf  binary
+*.zip  binary
+*.gz   binary
+*.mp3  binary
+*.ogg  binary
+*.opus binary
+*.flac binary
+*.wav  binary
+*.m4a  binary
+
+# Generated files: collapsed in merge request / pull request diffs.
+Cargo.lock linguist-generated=true

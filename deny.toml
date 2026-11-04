@@ -1,0 +1,73 @@
+# cargo-deny configuration: https://embarkstudios.github.io/cargo-deny/
+# Run with `cargo deny check` (or `make deny`).
+
+[graph]
+all-features = true
+
+[output]
+feature-depth = 1
+
+[advisories]
+# RustSec advisory database. Vulnerabilities and unsound crates always fail;
+# unmaintained crates fail only when they are our direct dependencies.
+db-urls = ["https://github.com/rustsec/advisory-db"]
+unmaintained = "workspace"
+yanked = "deny"
+ignore = [
+    # { id = "RUSTSEC-0000-0000", reason = "why it does not affect Wavyzon" },
+]
+
+[licenses]
+# Licenses that allow us to redistribute dependencies inside the Wavyzon
+# binary and Docker image under their own terms (see NOTICE).
+allow = [
+    "MIT",
+    "MIT-0",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "0BSD",
+    "BSL-1.0",
+    "CC0-1.0",
+    "Unlicense",
+    "Unicode-3.0",
+    "Unicode-DFS-2016",
+    "CDLA-Permissive-2.0", # webpki-roots (Mozilla's CA list)
+    # File-level copyleft: modified files must stay MPL, which we can honour.
+    # Used by symphonia (audio decoding).
+    "MPL-2.0",
+    # Wavyzon's own crates.
+    "CC-BY-NC-SA-4.0",
+]
+confidence-threshold = 0.93
+
+[licenses.private]
+# Workspace crates with `publish = false` (testkit, example plugins) are not
+# distributed on crates.io; don't require a license field on them.
+ignore = true
+
+# Crates whose license metadata cargo-deny cannot read on its own go here.
+# [[licenses.clarify]]
+# crate = "ring"
+# expression = "Apache-2.0 AND ISC"
+# license-files = [{ path = "LICENSE", hash = 0xbd0eed23 }]
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+allow-wildcard-paths = true
+highlight = "all"
+deny = [
+    # Wavyzon uses rustls; keep OpenSSL out of the tree so the binary stays
+    # self-contained.
+    { crate = "openssl-sys", reason = "use rustls instead" },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

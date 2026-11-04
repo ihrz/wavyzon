@@ -1,0 +1,52 @@
+[package]
+name = "wavyzon"
+description = "A standalone audio node for Discord bots, written in Rust"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+default-run = "wavyzon"
+
+[features]
+default = ["plugin-example"]
+## The example plugin (`tone:` source, `bitcrush` filter, event counter and
+## `/v1/plugins/example/` route).
+plugin-example = ["dep:wavyzon-plugin-example"]
+
+[[bin]]
+name = "wavyzon"
+path = "src/main.rs"
+
+[[bin]]
+name = "livecheck"
+path = "src/bin/livecheck.rs"
+
+[dependencies]
+wavyzon-plugin.workspace = true
+wavyzon-audio.workspace = true
+wavyzon-analysis.workspace = true
+wavyzon-voice.workspace = true
+wavyzon-sources.workspace = true
+wavyzon-player.workspace = true
+wavyzon-plugin-example = { path = "../../plugins/wavyzon-plugin-example", optional = true }
+
+tokio.workspace = true
+tokio-util.workspace = true
+futures.workspace = true
+parking_lot.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+axum.workspace = true
+reqwest.workspace = true
+thiserror.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+tower-http.workspace = true
+rand.workspace = true
+
+[dev-dependencies]
+wavyzon-testkit = { path = "../wavyzon-testkit" }
+tokio = { workspace = true, features = ["test-util"] }

@@ -1,0 +1,10 @@
+[env]
+# The Opus sources bundled by audiopus_sys declare an old CMake minimum that
+# CMake 4 refuses; this lets the bundled build go through when no system
+# libopus is found.
+CMAKE_POLICY_VERSION_MINIMUM = "3.5"
+# Link the Opus that audiopus_sys builds statically, so the binary has no
+# runtime libopus dependency. Set OPUS_STATIC=0 and provide libopus via
+# pkg-config to link the system one instead.
+OPUS_STATIC = { value = "1", force = false }
+CMAKE_TOOLCHAIN_FILE = { value = ".cargo/opus-install-libdir.cmake", relative = true, force = false }

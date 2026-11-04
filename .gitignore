@@ -1,0 +1,28 @@
+/target
+.env
+*.state.json
+/cache
+
+# Environment and local configuration
+.env.*
+!.env.example
+
+# Runtime data (WAVYZON_DATA_DIR, audio cache, saved sessions)
+/data
+*.state.json.tmp
+
+# Build and coverage output
+/public
+*.profraw
+*.profdata
+lcov.info
+/coverage
+
+# Editors and OS
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+*~
+.DS_Store
+Thumbs.db

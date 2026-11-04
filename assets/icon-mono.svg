@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Wavyzon">
+  <title>Wavyzon</title>
+  <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M256 208C286 208 290 344 320 344S364 172 412 172" stroke-opacity="0.55" stroke-width="48"/>
+    <path d="M100 172C148 172 150 344 192 344S226 208 256 208" stroke-width="48"/>
+  </g>
+</svg>

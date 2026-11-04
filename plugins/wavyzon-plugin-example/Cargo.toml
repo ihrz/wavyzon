@@ -1,0 +1,15 @@
+[package]
+name = "wavyzon-plugin-example"
+description = "Example Wavyzon plugin: a sine-tone source, a bitcrush filter, an event counter and a stats route"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+wavyzon-plugin.workspace = true
+tokio.workspace = true
+tracing.workspace = true

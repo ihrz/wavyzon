@@ -1,0 +1,71 @@
+Wavyzon
+Copyright (c) 2026 Anaïs Saraiva and the iHorizon team
+https://gitlab.com/ihrz/wavyzon
+
+Wavyzon is licensed under the Creative Commons Attribution-NonCommercial-
+ShareAlike 4.0 International license (CC BY-NC-SA 4.0). The full legal code is
+in the LICENSE file and at https://creativecommons.org/licenses/by-nc-sa/4.0/.
+
+
+Derived work: Cadence
+---------------------
+
+Wavyzon is a Rust rewrite of Cadence (https://github.com/relateful/Cadence), a
+standalone audio node for Discord bots written in Go. Its architecture, wire
+protocol, configuration and behaviour (two-deck mixing, the frame-accurate
+wire clock, DAVE end-to-end encryption, the Lavalink v4 compatible API) follow
+Cadence, and parts of Wavyzon were translated from Cadence's source code.
+
+Cadence is distributed under the MIT License. As that license requires, its
+copyright notice and permission notice are reproduced in full below. They
+apply to the portions of Wavyzon derived from Cadence.
+
+    MIT License
+
+    Copyright (c) 2026 greed
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all
+    copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
+
+The original Cadence code remains available under the MIT License from its
+authors. The CC BY-NC-SA 4.0 terms apply to Wavyzon as a whole and to the
+changes and additions made by the Wavyzon authors.
+
+
+Third-party components
+----------------------
+
+Wavyzon depends on third-party Rust crates and, in builds that link it
+statically, on the Opus codec (libopus, BSD 3-Clause, built from source by the
+audiopus_sys crate). Each of these keeps its own license and copyright; they
+are not relicensed under CC BY-NC-SA 4.0. The license of every crate is
+declared in its Cargo.toml and can be listed with `cargo deny list` or
+`cargo license`. The licenses accepted for dependencies are listed in
+deny.toml.
+
+
+A note on the license choice
+----------------------------
+
+Creative Commons itself recommends against using its licenses for software,
+because they do not address source code distribution or patent rights and are
+not compatible with most software licenses
+(https://creativecommons.org/faq/#can-i-apply-a-creative-commons-license-to-software).
+Wavyzon uses CC BY-NC-SA 4.0 deliberately, to match the other projects of the
+iHorizon team (https://gitlab.com/ihrz/ihrz). Please read the LICENSE file
+before reusing the code, especially for any commercial purpose.

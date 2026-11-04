@@ -1,0 +1,24 @@
+[package]
+name = "wavyzon-audio"
+description = "PCM format, DSP building blocks and codecs for Wavyzon"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[features]
+default = ["opus"]
+## libopus encoder (built from source by audiopus_sys when not found on the system).
+opus = ["dep:audiopus"]
+
+[dependencies]
+wavyzon-plugin.workspace = true
+symphonia.workspace = true
+audiopus = { workspace = true, optional = true }
+thiserror.workspace = true
+serde.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true

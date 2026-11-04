@@ -1,93 +1,250 @@
-# wavyzon
+<div align="center">
 
+<img src="assets/banner.svg" alt="Wavyzon: a standalone audio node for Discord bots, written in Rust" width="100%">
 
+<br>
 
-## Getting started
+### _A standalone audio node for Discord bots, written in Rust, with frame-accurate timing and two-deck mixing._
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+<br>
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+[![Rust](https://img.shields.io/badge/Rust-1.85%2B-B7410E?style=for-the-badge&logo=rust&logoColor=white)](https://www.rust-lang.org)
+[![Discord Voice](https://img.shields.io/badge/voice%20gateway-v8-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.com/developers/docs/topics/voice-connections)
+[![DAVE](https://img.shields.io/badge/E2EE-DAVE-2ea44f?style=for-the-badge)](https://daveprotocol.com)
+[![Lavalink v4](https://img.shields.io/badge/Lavalink-v4%20compatible-ff69b4?style=for-the-badge)](docs/src/lavalink.md)
+[![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-orange?style=for-the-badge)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
+<br>
+[![GitLab](https://img.shields.io/badge/GitLab-ihrz%2Fwavyzon-FC6D26?style=for-the-badge&logo=gitlab&logoColor=white)](https://gitlab.com/ihrz/wavyzon)
+[![GitHub mirror](https://img.shields.io/badge/GitHub-mirror-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/ihrz/wavyzon)
 
-## Add your files
+[**📚 Documentation**](docs/src/introduction.md) • [**🚀 Quick start**](#quick-start) • [**⚙️ Configuration**](#configuration) • [**🧩 Plugins**](docs/src/plugins.md) • [**🇫🇷 Français**](README.fr.md)
 
-* [Create](https://docs.gitlab.com/user/project/repository/web_editor/#create-a-file) or [upload](https://docs.gitlab.com/user/project/repository/web_editor/#upload-a-file) files
-* [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+---
 
+<div align="left">
+
+**Wavyzon** joins Discord voice channels, streams and mixes music, and tells
+your bot **exactly** when each sound reached Discord, so synced lyrics stay
+synced. If you've used [Lavalink](https://github.com/lavalink-devs/Lavalink),
+the model is familiar: your bot does the thinking, Wavyzon does the audio, and
+they talk over REST and a WebSocket. It even speaks Lavalink's v4 protocol, so
+your existing bot can switch by changing the node address.
+
+Wavyzon is a Rust rewrite of [Cadence](https://github.com/relateful/Cadence),
+the Go audio node behind *greed*, by the [iHorizon](https://gitlab.com/ihrz)
+team.
+
+## 💡 Why Wavyzon?
+
+| Problem | With a classic Lavalink node | With Wavyzon |
+| --- | --- | --- |
+| **Timing measured in the wrong place** | Position is where the *decoder* is, ~400 ms ahead of the network; `TrackStart` fires before the stream is fetched; updates every 5 s; speed filters ignored | A [wire clock](docs/src/wire-clock.md): every position is stamped when the packet leaves the socket, plus a dedicated `TrackAudibleEvent` |
+| **One track per player** | No real crossfades ([lavalink#1093](https://github.com/lavalink-devs/Lavalink/issues/1093)) | [Two decks](docs/src/mixing.md) built in: armed crossfades, bass swap, filter sweeps, tempo matching, gapless |
+| **Silent failures** | Dropped frames and stalls vanish | Every drop, stall and failure is an event, a log line and a metric |
+| **Unbounded queues** | Memory grows until it crashes | Every queue, cache and backlog is bounded and observable |
+| **Heavy runtime** | A JVM with a multi-GB heap | One static Rust binary; Opus linked statically, DAVE in pure Rust |
+| **Extending means forking** | JVM plugins tied to Lavalink internals | A small, typed [plugin API](docs/src/plugins.md) for sources, filters, events and routes |
+
+## ✨ Features
+
+### 🎧 **Discord voice done properly**
+
+- Voice gateway **v8** with `seq_ack` heartbeats and resume, exponential backoff
+- AES-256-GCM / XChaCha20-Poly1305 transport encryption
+- **DAVE end-to-end encryption** through the pure-Rust [`davey`](https://crates.io/crates/davey) crate: audio is held, never sent unencrypted
+- Per-connection Opus bitrate (16–384 kbps), set from the channel
+
+### ⏱️ **Wire clock**
+
+- Frame-accurate positions measured at the UDP socket
+- Correct under every speed and tempo filter, through crossfades and seeks
+- Clock sync (`/v1/clock`) and playout-delay compensation for **synced lyrics**
+
+### 🎚️ **Two-deck mixer**
+
+- Pre-buffered deck B, crossfades armed on the exact frame of a cue
+- Equal-power or linear curves, bass swap, high-pass sweeps, loudness and tempo matching
+- **Gapless** `nextTrack`, DJ voice-overs with ducking
+
+### 🔍 **Sources**
+
+- **SoundCloud** search, links and playback
+- **HTTP**: direct MP3 / AAC / M4A / FLAC / Ogg / WAV links and **Icecast / Shoutcast radio**, Range-based seeking, private addresses blocked by default
+- **Local files** (opt-in, sandboxed in `WAVYZON_LOCAL_ROOT`)
+- **Spotify, Apple Music and Deezer** links and search (metadata only), **mirrored by ISRC** to the exact recording on a playback source
+- Instant starts: prefetch, memory and disk caches
+
+### 🎛️ **Filters**
+
+- Lavalink's equalizer, timescale, karaoke, low-pass, tremolo, vibrato, rotation, plus **reverb**
+- Every change **glides** instead of jumping: no clicks
+- **Plugin filters** under `filters.pluginFilters`
+
+### 🧩 **Plugin API**
+
+- Add **sources**, **audio filters**, **event listeners** and **HTTP routes** in a few lines of Rust
+- Compiled in with a cargo feature, enabled with `WAVYZON_PLUGINS`, configured with `WAVYZON_PLUGIN_<NAME>_<KEY>`
+- A complete, tested [example plugin](plugins/wavyzon-plugin-example) (sine-tone source, bitcrush filter, event counter, stats route)
+
+### 🔁 **Operations**
+
+- **Lavalink v4 compatible** (`/v4/*`), works with lavalink-client, Shoukaku, Wavelink…
+- Session resume with event replay, state saved across restarts
+- Prometheus `/metrics`, structured JSON logs, typed failures with severities
+- Safe defaults: no default password, constant-time auth, SSRF protection, per-source proxies
+
+<a id="quick-start"></a>
+
+## 🚀 Quick start
+
+### 🐳 Docker (recommended)
+
+```bash
+git clone https://gitlab.com/ihrz/wavyzon.git && cd wavyzon
+cp .env.example .env            # set WAVYZON_PASSWORD at least
+docker compose up -d            # listens on 127.0.0.1:2333, data in the wavyzon-data volume
 ```
-cd existing_repo
-git remote add origin https://gitlab.com/ihrz/wavyzon.git
-git branch -M main
-git push -uf origin main
+
+### 🦀 From source
+
+Needs Rust 1.85+, a C compiler and CMake (libopus is built and linked
+statically, nothing else to install).
+
+```bash
+git clone https://gitlab.com/ihrz/wavyzon.git && cd wavyzon
+cargo build --release -p wavyzon
+WAVYZON_PASSWORD=change-me ./target/release/wavyzon
 ```
 
-## Integrate with your tools
+### ✅ Check it
 
-* [Set up project integrations](https://gitlab.com/ihrz/wavyzon/-/settings/integrations)
+```bash
+curl -s -H "Authorization: change-me" http://localhost:2333/v1/info
+curl -s -H "Authorization: change-me" "http://localhost:2333/v1/loadtracks?identifier=scsearch:midnight%20city"
+```
 
-## Collaborate with your team
+Then point your bot at `localhost:2333` with the same password, as a
+Lavalink v4 node or with the native `/v1` API. See
+[Lavalink compatibility](docs/src/lavalink.md) for client setup.
 
-* [Invite team members and collaborators](https://docs.gitlab.com/user/project/members/)
-* [Create a new merge request](https://docs.gitlab.com/user/project/merge_requests/creating_merge_requests/)
-* [Automatically close issues from merge requests](https://docs.gitlab.com/user/project/issues/managing_issues/#closing-issues-automatically)
-* [Enable merge request approvals](https://docs.gitlab.com/user/project/merge_requests/approvals/)
-* [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+<a id="configuration"></a>
 
-## Test and Deploy
+## ⚙️ Configuration
 
-Use the built-in continuous integration in GitLab.
+Everything is set through environment variables; see [`.env.example`](.env.example)
+and the [full reference](docs/src/configuration.md).
 
-* [Get started with GitLab CI/CD](https://docs.gitlab.com/ci/quick_start/)
-* [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/user/application_security/sast/)
-* [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/topics/autodevops/requirements/)
-* [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/user/clusters/agent/)
-* [Set up protected environments](https://docs.gitlab.com/ci/environments/protected_environments/)
+| Variable | Default | Description |
+| --- | --- | --- |
+| `WAVYZON_PASSWORD` | **required** | Shared secret for every request. `youshallnotpass` is refused |
+| `WAVYZON_ADDRESS` | `0.0.0.0:2333` | Listen address |
+| `WAVYZON_PLAYBACK_SOURCES` | `soundcloud` | Where Spotify / Apple Music / Deezer tracks are mirrored to, in order |
+| `WAVYZON_HTTP_ALLOW_PRIVATE` | `false` | Let the HTTP source fetch private / local addresses |
+| `WAVYZON_LOCAL_ROOT` | off | Directory the local-file source may read |
+| `WAVYZON_PLUGINS` | all compiled in | Plugins to enable, comma-separated |
+| `WAVYZON_PLUGIN_<NAME>_<KEY>` | | Settings for a plugin |
+| `WAVYZON_BUFFER_MS` | `10000` | Decoded audio buffered per deck |
+| `WAVYZON_BITRATE` | `96000` | Default Opus bitrate |
+| `WAVYZON_PLAYOUT_DELAY_MS` | `0` | Measured Discord-to-ear delay, added to `audibleAt` |
+| `WAVYZON_AUDIO_CACHE_DIR` | off | Disk cache for repeat-played tracks |
+| `WAVYZON_STATE_FILE` | off | Save sessions on shutdown, resume on start |
+| `WAVYZON_LOG_LEVEL` | `info` | `debug`, `info`, `warn` or `error` |
+| `SPOTIFY_CLIENT_ID` / `_SECRET` | | Spotify Web API credentials (metadata only) |
 
-***
+## 📚 Documentation
 
-# Editing this README
+The full documentation is an [mdBook](https://rust-lang.github.io/mdBook/) in
+[`docs/`](docs/src/SUMMARY.md) (`mdbook serve docs` to read it locally).
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+| Topic | Page |
+| --- | --- |
+| 📦 Installation & configuration | [Installation](docs/src/installation.md) · [Configuration](docs/src/configuration.md) |
+| 🔌 Protocol | [REST API](docs/src/api/rest.md) · [WebSocket & events](docs/src/api/websocket.md) · [Lavalink v4](docs/src/lavalink.md) |
+| 🎵 Audio | [Wire clock](docs/src/wire-clock.md) · [Mixing](docs/src/mixing.md) · [Filters](docs/src/filters.md) · [Sources](docs/src/sources.md) |
+| 🧩 Plugins | [Writing plugins](docs/src/plugins.md) · [Example plugin](plugins/wavyzon-plugin-example) |
+| 🏗️ Internals & ops | [Architecture](docs/src/architecture.md) · [Observability](docs/src/observability.md) · [Deployment](docs/src/deployment.md) · [Troubleshooting](docs/src/troubleshooting.md) |
+| 🔀 Migrating | [From Lavalink](docs/src/guides/from-lavalink.md) · [From Cadence](docs/src/guides/from-cadence.md) |
+| 🇫🇷 Français | [Introduction](docs/src/fr/introduction.md) · [Démarrage rapide](docs/src/fr/quick-start.md) · [Plugins](docs/src/fr/plugins.md) |
 
-## Suggestions for a good README
+## 🏗️ Architecture
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+```text
+crates/wavyzon            binary: config, REST + WebSocket (/v1, /v4), sessions, plugin host, metrics
+crates/wavyzon-player     two decks, crossfades, gapless, filters, events, the wire clock
+crates/wavyzon-voice      Discord voice gateway v8, UDP/RTP, AEAD, DAVE, the 20 ms send loop
+crates/wavyzon-sources    SoundCloud, HTTP, local, Deezer/Spotify/Apple metadata, mirroring, caches
+crates/wavyzon-analysis   tempo, key, phrases, sections, vocals, loudness fingerprints
+crates/wavyzon-audio      PCM format, DSP, Symphonia decoding, Opus encoding
+crates/wavyzon-plugin     the plugin API and shared data model
+crates/wavyzon-testkit    fake voice gateway, mock sources, audio assertions
+plugins/*                 plugins built with the workspace
+```
 
-## Name
-Choose a self-explaining name for your project.
+## 🔗 Resources & Links
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+| Resource | Link |
+| --- | --- |
+| 🦊 **GitLab (main)** | [gitlab.com/ihrz/wavyzon](https://gitlab.com/ihrz/wavyzon) |
+| 🐙 **GitHub (mirror)** | [github.com/ihrz/wavyzon](https://github.com/ihrz/wavyzon) |
+| 📝 **Changelog** | [CHANGELOG.md](CHANGELOG.md) · [Français](CHANGELOG_FR.md) |
+| 🤝 **Contributing** | [CONTRIBUTING.md](CONTRIBUTING.md) |
+| 🛡️ **Security** | [SECURITY.md](SECURITY.md) |
+| 💬 **iHorizon Discord** | [discord.ihorizon.org](http://discord.ihorizon.org/) |
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+## 🏆 Credits
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+- **Anaïs Saraiva** and the **iHorizon team**, authors of Wavyzon.
+- [**Cadence**](https://github.com/relateful/Cadence) by *greed* (MIT): Wavyzon's
+  design, protocol and behaviour come from Cadence, and parts were translated
+  from its source. Its license notice is reproduced in [`NOTICE`](NOTICE).
+- [**Lavalink**](https://github.com/lavalink-devs/Lavalink), whose protocol
+  Wavyzon speaks.
+- Built on [tokio](https://tokio.rs), [axum](https://github.com/tokio-rs/axum),
+  [Symphonia](https://github.com/pdeljanov/Symphonia),
+  [libopus](https://opus-codec.org) via [audiopus](https://github.com/lakelezz/audiopus),
+  [davey](https://crates.io/crates/davey),
+  [RustCrypto AEADs](https://github.com/RustCrypto/AEADs),
+  [reqwest](https://github.com/seanmonstar/reqwest),
+  [tokio-tungstenite](https://github.com/snapview/tokio-tungstenite),
+  [serde](https://serde.rs) and [tracing](https://github.com/tokio-rs/tracing).
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+## 📄 License & Terms of Use
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+Wavyzon is © 2026 Anaïs Saraiva and the iHorizon team, distributed under
+**[CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/)**
+(see [`LICENSE`](LICENSE)). Portions derived from Cadence remain under the
+MIT terms reproduced in [`NOTICE`](NOTICE).
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+### ✅ **Permitted**
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+✔️ **Share**: copy and redistribute the material  
+✔️ **Adapt**: remix, transform and build upon the material, plugins included
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+### ❌ **Restrictions**
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+❌ **Attribution**: you must credit the work and indicate changes  
+❌ **Non-Commercial**: no commercial use  
+❌ **Share Alike**: modifications must keep the same license  
+❌ **No additional restrictions**: no legal or technological measures that restrict others
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+---
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+## ⚠️ Code of Conduct
 
-## License
-For open source projects, say how it is licensed.
+🚨 **Zero tolerance for hate** towards contributors, of any kind or level.  
+🌈 **Inclusivity**: Wavyzon is open and welcoming to everyone, whatever their origin, gender identity, sexual orientation or any other characteristic.
+See [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+</div>
+
+---
+
+### 🎉 Thank you for using Wavyzon
+
+<sub>Developed with ❤️ by Anaïs Saraiva and the iHorizon team</sub>
+
+[![Made with Rust](https://img.shields.io/badge/Made%20with-Rust-B7410E?style=for-the-badge&logo=rust&logoColor=white)](https://www.rust-lang.org)
+[![Powered by tokio](https://img.shields.io/badge/Powered%20by-tokio-463F3F?style=for-the-badge)](https://tokio.rs)
+[![Decoded by Symphonia](https://img.shields.io/badge/Decoded%20by-Symphonia-7C5CFF?style=for-the-badge)](https://github.com/pdeljanov/Symphonia)
+
+</div>

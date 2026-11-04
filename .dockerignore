@@ -1,0 +1,20 @@
+# Keep the build context small and free of secrets. Sources, docs and
+# Markdown stay in, since crates may include them with include_str!.
+target/
+**/target/
+.git/
+.gitlab/
+.github/
+.env
+.env.*
+!.env.example
+data/
+cache/
+public/
+*.state.json
+changelogs/
+.idea/
+.vscode/
+Dockerfile
+docker-compose.yml
+.dockerignore
