@@ -174,3 +174,20 @@ async fn cleared_next_is_not_revived_by_a_slow_preload() {
     assert!(p.state().next_track.is_none(), "cleared next track came back");
     p.destroy();
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn adopt_acknowledges_only_the_track_that_took_over() {
+    let (p, rec) = new_test_player(&[("a", 0.5), ("b", 3.0), ("c", 3.0)]);
+    let (_, b_inst, _, _) = play_into_next(&p, &rec).await;
+    assert_eq!(p.adopt(&track("c"), 0), None, "another track was adopted");
+    assert_eq!(p.adopt(&track("b"), 500), None, "a start other than 0 was adopted");
+    assert_eq!(p.adopt(&track("b"), 0), Some(b_inst));
+    assert_eq!(
+        rec.wait_count(EventType::TrackStartEvent, 2).await,
+        2,
+        "adoption did not announce the track"
+    );
+    assert_eq!(p.adopt(&track("b"), 0), None, "adopted twice");
+    assert_eq!(p.state().track.map(|t| t.identifier), Some("b".to_string()));
+    p.destroy();
+}

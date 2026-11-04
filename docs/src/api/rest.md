@@ -388,7 +388,7 @@ updated player (as above).
 | `track.encoded` | Play this track. `null` (or a `track` object with neither `encoded` nor `identifier`) **stops** the player (`TrackEndEvent` with `stopped`) |
 | `track.identifier` | Lavalink v4: resolve this `loadtracks` identifier and play its first track (`400` if it finds nothing) |
 | `track.userData` | Any JSON object, echoed back on the track in v4 events and players |
-| `position` | With `track`: start position in ms. Alone: **seek** (ignored when nothing is playing, as in Cadence) |
+| `position` | With `track`: start position in ms, never a seek, even when `noReplace` keeps the current track (as in Lavalink). Alone: **seek** (ignored when nothing is playing, as in Cadence) |
 | `paused` | With `track`: start paused. Alone: pause or resume (with `WAVYZON_PAUSE_FADE_MS` fade) |
 | `volume` | `0`–`1000`, where `100` is unity gain. Clamped |
 | `filters` | Replaces the whole filter set. See [Filters](../filters.md). Changes glide, they don't jump |
@@ -397,7 +397,11 @@ updated player (as above).
 | `nextTrack.encoded` | Preload the next track: it crossfades in over `WAVYZON_CROSSFADE_MS` before the current one ends, or starts on the **exact frame** it ends (gapless) when that is `0`. `null` clears it |
 | `analyze` | Analyse the playing audio live (BPM, key, sections…), results at `/v1/mix/analysis/…` |
 
-Query `noReplace=true`: ignore `track` if something is already playing.
+Query `noReplace=true`: ignore `track` if something is already playing. When
+that `track` is the `nextTrack` that just took over (gapless swap or
+crossfade), it is acknowledged: its `TrackStartEvent` is sent right away
+instead of when the 5 s adoption window closes. This is how Lavalink clients
+advance their queue (`play({ noReplace: true })` after `finished`).
 
 Notes:
 

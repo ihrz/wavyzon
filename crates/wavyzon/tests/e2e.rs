@@ -309,3 +309,52 @@ async fn expired_saved_sessions_are_not_restored() {
     assert!(c.resumed());
     n.stop().await;
 }
+
+/// What lavalink-client does after an automatic crossfade: on `finished` it
+/// advances its queue with `play({ noReplace: true })`, i.e. the next track
+/// with `position: 0`. That must neither restart nor seek the track already
+/// fading in (it used to seek it back to 0, so its first seconds were heard
+/// twice), and it acknowledges that track at once.
+#[tokio::test]
+async fn crossfaded_next_track_survives_the_clients_no_replace_play() {
+    let n = start(&[("WAVYZON_CROSSFADE_MS", "300")]).await;
+    let gw = MockVoiceGateway::start().await.unwrap();
+    let c = n.client("v4").await;
+    let (a, b) = (tone_encoded(440, 1500), tone_encoded(660, 4000));
+    c.voice_update("42", &voice(&gw, "vs1")).await.unwrap();
+    c.play("42", &a).await.unwrap();
+    c.wait_for_guild_event("42", EventType::TrackStartEvent, WAIT)
+        .await
+        .unwrap();
+    c.update_player("42", json!({ "nextTrack": { "encoded": b } }), false)
+        .await
+        .unwrap();
+    let end = c
+        .wait_for_guild_event("42", EventType::TrackEndEvent, WAIT)
+        .await
+        .unwrap();
+    assert_eq!(end["reason"], "finished", "{end}");
+
+    let asked = std::time::Instant::now();
+    let body = json!({ "track": { "encoded": b, "userData": {} }, "volume": 100, "position": 0 });
+    c.update_player("42", body, true).await.unwrap();
+    let started = c
+        .wait_for_guild_event("42", EventType::TrackStartEvent, WAIT)
+        .await
+        .unwrap();
+    assert_eq!(started["track"]["encoded"], b.as_str(), "{started}");
+    assert!(
+        asked.elapsed() < Duration::from_secs(2),
+        "the start waited for the adoption window: {:?}",
+        asked.elapsed()
+    );
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    let opens: Vec<_> = n
+        .tone
+        .opens()
+        .into_iter()
+        .filter(|(t, _)| t.identifier == "660:4000")
+        .collect();
+    assert_eq!(opens.len(), 1, "the next track was reopened: {opens:?}");
+    n.stop().await;
+}

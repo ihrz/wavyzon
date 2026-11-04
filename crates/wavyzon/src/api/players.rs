@@ -126,15 +126,26 @@ impl Api {
                 .map_err(|e| ApiError::bad_request(e.to_string()))?;
         }
         if let Some(tf) = p.track.take() {
+            // As in Lavalink, a `position` next to a track is that track's
+            // start, never a seek, even when `noReplace` keeps the current
+            // one. Cadence seeked: lavalink-client's queue advance
+            // (`noReplace` + `position: 0`) then rewound the track a gapless
+            // swap or crossfade had just started.
+            let start = p.position.take().unwrap_or(0).max(0);
             match self.track_of(&tf).await? {
                 None => g.player.stop(),
-                Some(t) => {
-                    if !(no_replace && g.player.state().track.is_some()) {
-                        let start = p.position.take().unwrap_or(0).max(0);
-                        let paused = p.paused.take().unwrap_or(false);
-                        g.set_user_data(&t.encode(), tf.user_data);
-                        g.player.play(t, start, paused);
+                Some(t) if no_replace && g.player.state().track.is_some() => {
+                    // The track that just took over is acknowledged now
+                    // rather than when the adoption window closes.
+                    let encoded = t.encode();
+                    if g.player.adopt(&t, start).is_some() {
+                        g.set_user_data(&encoded, tf.user_data);
                     }
+                }
+                Some(t) => {
+                    let paused = p.paused.take().unwrap_or(false);
+                    g.set_user_data(&t.encode(), tf.user_data);
+                    g.player.play(t, start, paused);
                 }
             }
         }

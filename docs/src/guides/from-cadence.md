@@ -114,6 +114,11 @@ A few series also changed shape:
   match exists the track fails with "no matching recording" instead of
   playing the wrong song.
 - Oversized request bodies return `413` instead of `400`.
+- A player update with `track` and `position` never seeks, even when
+  `noReplace` keeps the current track (Lavalink's rule). Cadence seeked, so
+  lavalink-client's queue advance (`noReplace` + `position: 0`) rewound a
+  track that a gapless swap or crossfade had just started. Such a
+  `noReplace` play of that track also adopts it at once.
 - SoundCloud also plays HLS AAC (fragmented MP4), which is all many tracks
   offer now. Cadence's `audio/mpeg` prefix test also matched the adaptive
   `audio/mpegurl` playlist, which SoundCloud answers with a 404, so those

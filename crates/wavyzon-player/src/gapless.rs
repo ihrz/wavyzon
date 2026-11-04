@@ -57,6 +57,17 @@ impl Player {
         Ok(s.next_inst)
     }
 
+    /// Acknowledge `t` when it is the next track that just took over (gapless
+    /// swap or automatic crossfade): its held-back `TrackStartEvent` is sent
+    /// now. Nothing else changes, so this is what a `noReplace` play of that
+    /// track does. Returns its instance when it was adopted.
+    pub fn adopt(&self, t: &Track, start_ms: i64) -> Option<u64> {
+        let mut g = self.inner.lock();
+        let s = &mut *g;
+        let paused = s.paused;
+        self.adopt_locked(s, t, start_ms, paused)
+    }
+
     /// Forget the gapless next track (and any `set_next` still resolving).
     pub fn clear_next(&self) {
         let mut g = self.inner.lock();
