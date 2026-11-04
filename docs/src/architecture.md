@@ -80,6 +80,19 @@ graph TD
   │◄── playerUpdate (anchor) ───│                        │                          │                    │
 ```
 
+### Broken streams
+
+A source connection can drop mid-track: a CDN or the HTTP client cuts a body
+nobody reads for a while, and a preloaded `nextTrack` waits minutes with a
+full buffer (so does a long pause). When the body errors or sends nothing
+for 30 s, the deck reopens the track through `Playable::open` at the
+position its decoder reached, and the decoder skips to that exact sample:
+the seam has no gap and no repeat (a source that cannot seek is re-decoded
+from the start and skipped). Up to three reopens per deck, never for a live
+stream; each one is logged. Past that the track fails with `stream
+interrupted`. Not in Cadence; Lavaplayer reconnects its HTTP streams the
+same way.
+
 ### The real-time path
 
 The send loop in `wavyzon-voice` is the only real-time component. Every

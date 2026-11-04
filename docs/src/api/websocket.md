@@ -163,7 +163,9 @@ bars and "now playing" timestamps here.
 `severity` is `common`, `suspicious` or `fault` (see
 [REST › loadtracks](rest.md#get-v1loadtracksidentifier)). An exception during
 playback may or may not end the track; an exception during loading is
-followed by `TrackEndEvent{loadFailed}`.
+followed by `TrackEndEvent{loadFailed}`. A connection that breaks
+mid-track is reopened where it stopped (up to three times) before any
+`stream interrupted` exception is sent.
 
 #### `TrackStuckEvent`
 

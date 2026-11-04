@@ -114,6 +114,10 @@ A few series also changed shape:
   match exists the track fails with "no matching recording" instead of
   playing the wrong song.
 - Oversized request bodies return `413` instead of `400`.
+- A stream that breaks mid-track is reopened where the decoder stopped (up
+  to three times, not for live streams) instead of failing with `stream
+  interrupted`: a preloaded `nextTrack` or a long pause no longer loses
+  its connection for good.
 - A player update with `track` and `position` never seeks, even when
   `noReplace` keeps the current track (Lavalink's rule). Cadence seeked, so
   lavalink-client's queue advance (`noReplace` + `position: 0`) rewound a

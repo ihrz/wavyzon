@@ -9,6 +9,7 @@
 use std::collections::VecDeque;
 use std::io::{self, Read};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
 use parking_lot::{Condvar, Mutex};
@@ -34,6 +35,8 @@ const DECODE_CHUNK_SIZE: usize = CHUNK_SAMPLES * CHANNELS;
 /// Raw byte chunks buffered between the async reader and the decoder.
 const PUMP_CHUNKS: usize = 16;
 const PUMP_BYTES: usize = 32 << 10;
+/// How many times a deck reopens its stream after it broke mid-track.
+const MAX_RESUMES: u32 = 3;
 
 /// Decoded PCM at the source's native rate.
 pub(crate) struct Chunk {
@@ -63,6 +66,9 @@ pub(crate) struct DeckShared {
     cv: Condvar,
     cap: usize,
     failure: Mutex<Option<Failure>>,
+    /// Native `(sample index, rate)` right after the last decoded chunk:
+    /// where a reopened stream resumes.
+    decoded_end: Mutex<Option<(i64, u32)>>,
     pub(crate) cancel: CancellationToken,
 }
 
@@ -77,8 +83,17 @@ impl DeckShared {
             cv: Condvar::new(),
             cap,
             failure: Mutex::new(None),
+            decoded_end: Mutex::new(None),
             cancel,
         }
+    }
+
+    fn mark_decoded(&self, end: i64, rate: u32) {
+        *self.decoded_end.lock() = Some((end, rate));
+    }
+
+    fn decoded_end(&self) -> Option<(i64, u32)> {
+        *self.decoded_end.lock()
     }
 
     /// Blocking push (producer thread). `false` once the deck is closed.
@@ -376,86 +391,143 @@ pub(crate) fn spawn_producer(
     });
 }
 
+/// Open the stream and decode it; when the connection breaks mid-track
+/// (an error or no data for [`STREAM_IDLE_TIMEOUT`]), reopen it where the
+/// decoder stopped, up to [`MAX_RESUMES`] times.
+///
+/// Not in Cadence. A body nobody reads for a while is cut by the CDN or by
+/// the HTTP client's read timeout: a preloaded next track (gapless /
+/// crossfade) waits whole minutes with a full buffer, and so does a long
+/// pause. Lavaplayer's persistent HTTP streams reconnect the same way.
 async fn produce(rt: &Handle, shared: &Arc<DeckShared>, opener: Arc<dyn Opener>, playable: Track, start_ms: i64) {
     let cancel = shared.cancel.clone();
-    // The idle timer covers opening too (as in Cadence), so a source that
-    // never answers fails the track instead of only reporting it stuck.
-    let opened = tokio::select! {
-        _ = cancel.cancelled() => return,
-        r = tokio::time::timeout(STREAM_IDLE_TIMEOUT, opener.open(&playable, start_ms)) => match r {
-            Ok(r) => r,
-            Err(_) => Err(Failure::common(
-                &playable.source,
-                "stream stalled",
-                Some(format!("no data for {}s", STREAM_IDLE_TIMEOUT.as_secs())),
-            )),
-        },
-    };
+    let mut resume_at: Option<(i64, u32)> = None;
+    let mut resumes = 0;
+    loop {
+        let open_ms = resume_at.map_or(start_ms, |(index, rate)| index * 1000 / rate.max(1) as i64);
+        // The idle timer covers opening too (as in Cadence), so a source that
+        // never answers fails the track instead of only reporting it stuck.
+        let opened = tokio::select! {
+            _ = cancel.cancelled() => return,
+            r = tokio::time::timeout(STREAM_IDLE_TIMEOUT, opener.open(&playable, open_ms)) => match r {
+                Ok(r) => r,
+                Err(_) => Err(Failure::common(
+                    &playable.source,
+                    "stream stalled",
+                    Some(format!("no data for {}s", STREAM_IDLE_TIMEOUT.as_secs())),
+                )),
+            },
+        };
+        let stream = match opened {
+            Ok(s) => s,
+            Err(f) => {
+                if !cancel.is_cancelled() {
+                    shared.fail(f);
+                }
+                return;
+            }
+        };
+        let live = stream.live || playable.is_stream;
+        let cause = match pump(rt, shared, &playable.source, stream, open_ms, resume_at).await {
+            Pumped::Done => return,
+            Pumped::Broken(cause) => cause,
+        };
+        if cancel.is_cancelled() || shared.failure().is_some() {
+            return;
+        }
+        if live || resumes >= MAX_RESUMES {
+            shared.fail(Failure::common(&playable.source, "stream interrupted", Some(cause)));
+            return;
+        }
+        resumes += 1;
+        resume_at = shared.decoded_end().or(resume_at);
+        let at_ms = resume_at.map_or(start_ms, |(index, rate)| index * 1000 / rate.max(1) as i64);
+        tracing::warn!(
+            track = %playable.key(),
+            at_ms,
+            attempt = resumes,
+            cause = %cause,
+            "stream interrupted, reopening it where it stopped"
+        );
+    }
+}
+
+/// How one opened stream ended.
+enum Pumped {
+    /// It ended, the deck was closed, or it failed for good (recorded).
+    Done,
+    /// The connection broke mid-track; the decoder stopped where it got.
+    Broken(String),
+}
+
+/// Read one opened stream into a decoder until it ends or breaks.
+async fn pump(
+    rt: &Handle,
+    shared: &Arc<DeckShared>,
+    source: &str,
+    stream: Stream,
+    start_ms: i64,
+    resume_at: Option<(i64, u32)>,
+) -> Pumped {
+    let cancel = shared.cancel.clone();
     let Stream {
         mut body,
         format,
         start_sample,
         ..
-    } = match opened {
-        Ok(s) => s,
-        Err(f) => {
-            if !cancel.is_cancelled() {
-                shared.fail(f);
-            }
-            return;
-        }
-    };
-    let source = playable.source.clone();
+    } = stream;
     let (tx, rx) = tokio::sync::mpsc::channel::<Vec<u8>>(PUMP_CHUNKS);
+    // Set when the body broke: the decoder then stops on the cut-off data
+    // without reporting it (the stream is reopened).
+    let abandoned = Arc::new(AtomicBool::new(false));
     let decoder = {
         let shared = shared.clone();
-        let source = source.clone();
+        let source = source.to_string();
+        let abandoned = abandoned.clone();
         rt.spawn_blocking(move || {
             decode_loop(
                 &shared,
                 &source,
                 &format,
                 ChannelReader::new(rx),
-                start_ms,
-                start_sample,
+                Skip {
+                    start_ms,
+                    start_sample,
+                    resume_at,
+                },
+                &abandoned,
             )
         })
     };
     let mut buf = vec![0u8; PUMP_BYTES];
-    loop {
+    let outcome = loop {
         let read = tokio::select! {
-            _ = cancel.cancelled() => break,
+            _ = cancel.cancelled() => break Pumped::Done,
             r = tokio::time::timeout(STREAM_IDLE_TIMEOUT, body.read(&mut buf)) => r,
         };
         match read {
-            Err(_) => {
-                shared.fail(Failure::common(
-                    &source,
-                    "stream stalled",
-                    Some(format!("no data for {}s", STREAM_IDLE_TIMEOUT.as_secs())),
-                ));
-                break;
-            }
-            Ok(Ok(0)) => break,
+            Err(_) => break Pumped::Broken(format!("no data for {}s", STREAM_IDLE_TIMEOUT.as_secs())),
+            Ok(Ok(0)) => break Pumped::Done,
             Ok(Ok(n)) => {
                 let sent = tokio::select! {
                     _ = cancel.cancelled() => false,
                     r = tx.send(buf[..n].to_vec()) => r.is_ok(),
                 };
                 if !sent {
-                    break;
+                    break Pumped::Done;
                 }
             }
-            Ok(Err(e)) => {
-                if !cancel.is_cancelled() {
-                    shared.fail(Failure::common(&source, "stream interrupted", Some(e.to_string())));
-                }
-                break;
-            }
+            Ok(Err(e)) => break Pumped::Broken(e.to_string()),
         }
+    };
+    if matches!(outcome, Pumped::Broken(_)) {
+        abandoned.store(true, Ordering::SeqCst);
     }
     drop(tx);
+    // A preloaded deck's decoder may wait here until playback frees room
+    // in its queue: the reopen then happens with that buffer still ahead.
     let _ = decoder.await;
+    outcome
 }
 
 /// Blocking `Read` over the byte channel fed by the async pump.
@@ -493,26 +565,41 @@ impl Read for ChannelReader {
     }
 }
 
+/// Where decoding output starts.
+struct Skip {
+    /// Requested start (ms).
+    start_ms: i64,
+    /// Where the stream actually starts, in 48 kHz samples.
+    start_sample: i64,
+    /// Exact native `(index, rate)` to resume at after a reopen.
+    resume_at: Option<(i64, u32)>,
+}
+
 fn decode_loop(
     shared: &DeckShared,
     source: &str,
     format: &Format,
     reader: ChannelReader,
-    start_ms: i64,
-    start_sample: i64,
+    from: Skip,
+    abandoned: &AtomicBool,
 ) {
     let mut pcm = match codec::decode(format, Box::new(reader)) {
         Ok(p) => p,
         Err(e) => {
-            if !shared.cancel.is_cancelled() {
+            if !shared.cancel.is_cancelled() && !abandoned.load(Ordering::SeqCst) {
                 shared.fail(Failure::fault(source, "decode failed", Some(e.to_string())));
             }
             return;
         }
     };
     let rate = pcm.sample_rate().max(1);
-    let skip = start_ms * rate as i64 / 1000;
-    let mut index = start_sample * rate as i64 / SAMPLE_RATE as i64;
+    // A resumed stream continues on the exact sample the previous one
+    // stopped at (no gap, no repeat).
+    let skip = match from.resume_at {
+        Some((index, r)) if r == rate => index,
+        _ => from.start_ms * rate as i64 / 1000,
+    };
+    let mut index = from.start_sample * rate as i64 / SAMPLE_RATE as i64;
     loop {
         if shared.cancel.is_cancelled() {
             return;
@@ -533,6 +620,7 @@ fn decode_loop(
                         buf.drain(..cut * CHANNELS);
                         start = skip;
                     }
+                    let end = start + (buf.len() / CHANNELS) as i64;
                     if !shared.push(Chunk {
                         samples: buf,
                         start,
@@ -540,11 +628,12 @@ fn decode_loop(
                     }) {
                         return;
                     }
+                    shared.mark_decoded(end, rate);
                 }
                 index += frames;
             }
             Err(e) => {
-                if !shared.cancel.is_cancelled() {
+                if !shared.cancel.is_cancelled() && !abandoned.load(Ordering::SeqCst) {
                     shared.fail(Failure::common(source, "stream interrupted", Some(e.to_string())));
                 }
                 return;

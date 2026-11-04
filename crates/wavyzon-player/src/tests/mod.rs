@@ -22,6 +22,7 @@ mod player;
 mod plugin_filters;
 mod reverb;
 mod seek_mix;
+mod stream_resume;
 
 /// Interleaved s16le stereo sine at 48 kHz, amplitude 8000.
 pub(crate) fn tone(seconds: f64, hz: f64) -> Vec<u8> {
