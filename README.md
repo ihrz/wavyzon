@@ -15,6 +15,8 @@
 [![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-orange?style=for-the-badge)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 <br>
 [![GitLab](https://img.shields.io/badge/GitLab-ihrz%2Fwavyzon-FC6D26?style=for-the-badge&logo=gitlab&logoColor=white)](https://gitlab.com/ihrz/wavyzon)
+[![Pipeline](https://img.shields.io/gitlab/pipeline-status/ihrz%2Fwavyzon?branch=main&style=for-the-badge&logo=gitlab&label=pipeline)](https://gitlab.com/ihrz/wavyzon/-/pipelines?ref=main)
+[![Coverage](https://img.shields.io/gitlab/pipeline-coverage/ihrz%2Fwavyzon?branch=main&style=for-the-badge&label=coverage)](https://gitlab.com/ihrz/wavyzon/-/pipelines?ref=main)
 [![GitHub mirror](https://img.shields.io/badge/GitHub-mirror-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/ihrz/wavyzon)
 
 [**📚 Documentation**](docs/src/introduction.md) • [**🚀 Quick start**](#quick-start) • [**⚙️ Configuration**](#configuration) • [**🧩 Plugins**](docs/src/plugins.md) • [**🇫🇷 Français**](README.fr.md)
