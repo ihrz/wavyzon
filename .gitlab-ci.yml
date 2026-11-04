@@ -140,7 +140,9 @@ coverage:
     - cargo llvm-cov nextest --workspace --all-features --locked --profile ci --no-report
     - cargo llvm-cov report --cobertura --output-path coverage.xml
     - cargo llvm-cov report --summary-only | tee coverage-summary.txt
-    - awk '/^TOTAL/ { print "Line coverage: " $10 }' coverage-summary.txt
+    # Block scalar: the command contains ": ", which a plain YAML scalar can't.
+    - |
+      awk '/^TOTAL/ { print "Line coverage: " $10 }' coverage-summary.txt
   coverage: '/Line coverage: (\d+\.\d+)%/'
   artifacts:
     when: always
