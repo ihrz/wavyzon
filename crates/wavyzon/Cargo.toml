@@ -8,6 +8,9 @@ license.workspace = true
 authors.workspace = true
 repository.workspace = true
 default-run = "wavyzon"
+# The node is shipped as a binary and Docker image, not on crates.io; this
+# also lets cargo-deny accept the path dependency on the example plugin.
+publish = false
 
 [features]
 default = ["plugin-example"]
