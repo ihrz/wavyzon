@@ -18,6 +18,9 @@ Supported commands, limits and routes: [Filters → Equalizer APO](../../docs/sr
 `Reverb: Mix 30 % Room 70 % Damping 50 %` is a Wavyzon extension; APO ignores
 it, so presets stay usable in APO.
 
+[`examples/`](examples) has reverb presets to copy into the presets
+directory (they are not loaded from there).
+
 | Module | |
 | --- | --- |
 | `parse.rs` | APO text → commands and warnings |

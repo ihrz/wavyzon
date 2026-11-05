@@ -1,0 +1,5 @@
+# Reverb - Room Large, decay 1.40 s, pre-delay 0 ms, diffusion 0.48 %
+# HF damping 5000 Hz, bass cut 298 Hz, treble cut 5000 Hz, dry 0.0 dB, wet -11.8 dB
+# reverb-large-1.4s.wav holds the dry path and the wet tail: no other line needed.
+# Copy both files to the presets directory (data/plugins/apo/) to use it.
+Convolution: reverb-large-1.4s.wav

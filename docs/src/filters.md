@@ -204,6 +204,10 @@ leave the directory and symbolic links are not followed.
   about 1 % of one core per playing deck.
 - Like other plugin filters, changing the configuration builds a new
   instance and crossfades to it; boosts can clip, so add a `Preamp`.
+- Ready-made reverb presets (a convolution reverb with its impulse
+  response and its generator, and a file-free `Reverb:` one) are in
+  [`plugins/wavyzon-plugin-apo/examples`](https://gitlab.com/ihrz/wavyzon/-/tree/main/plugins/wavyzon-plugin-apo/examples).
+  They are not loaded from there: copy them to the presets directory.
 
 ## Volume
 

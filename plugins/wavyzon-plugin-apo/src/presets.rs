@@ -281,6 +281,21 @@ pub(crate) mod tests {
         std::fs::remove_dir_all(d).unwrap();
     }
 
+    /// The shipped examples stay valid presets.
+    #[test]
+    fn examples_load_cleanly() {
+        let s = Store::load(&Path::new(env!("CARGO_MANIFEST_DIR")).join("examples"));
+        assert!(s.warnings.is_empty(), "{:?}", s.warnings);
+        assert_eq!(s.presets.len(), 2);
+        for (name, stages) in [("reverb-large", ["convolution"]), ("reverb-light", ["reverb"])] {
+            let prog = s.preset(name).unwrap().program.as_ref().unwrap();
+            assert_eq!(prog.summary(), stages, "{name}");
+            assert!(prog.warnings.is_empty(), "{name}: {:?}", prog.warnings);
+        }
+        let ir = s.impulses()[0].1.as_ref().unwrap();
+        assert_eq!((ir.channels.len(), ir.frames, ir.truncated), (2, 105_600, false));
+    }
+
     #[test]
     fn missing_directory_is_an_empty_store() {
         let s = Store::load(Path::new("/nonexistent/wavyzon-apo"));

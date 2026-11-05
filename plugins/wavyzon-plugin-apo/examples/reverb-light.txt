@@ -1,0 +1,5 @@
+# Reverb without an impulse response file: Wavyzon's `Reverb:` extension
+# (Freeverb). Close to reverb-large.txt (decay ~1.4 s, wet ~-12 dB) but
+# without its bass/treble cut on the reverb. Equalizer APO ignores this
+# command, so the file still loads there.
+Reverb: Mix 14 % Room 56 % Damping 100 %
