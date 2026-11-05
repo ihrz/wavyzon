@@ -1,7 +1,6 @@
 //! A stream that breaks mid-track is reopened where the decoder stopped.
 
 use std::pin::Pin;
-use std::sync::atomic::{AtomicU32, Ordering};
 use std::task::{Context, Poll};
 
 use tokio::io::{AsyncRead, ReadBuf};
@@ -33,7 +32,7 @@ impl AsyncRead for Breaking {
 /// Like most sources it ignores `start_ms` (the decoder skips).
 struct Flaky {
     seconds: f64,
-    breaks: AtomicU32,
+    breaks: Mutex<u32>,
     live: bool,
     opens: Mutex<Vec<i64>>,
 }
@@ -43,10 +42,14 @@ impl Opener for Flaky {
     async fn open(&self, _: &Track, start_ms: i64) -> Result<Stream, Failure> {
         self.opens.lock().push(start_ms);
         let data = tone(self.seconds, 440.0);
-        let breaking = self
-            .breaks
-            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |b| b.checked_sub(1))
-            .is_ok();
+        // A Mutex rather than AtomicU32::fetch_update, which newer toolchains deprecate in favour of
+        // try_update (too new for the 1.85 MSRV).
+        let breaking = {
+            let mut left = self.breaks.lock();
+            let breaking = *left > 0;
+            *left = left.saturating_sub(1);
+            breaking
+        };
         let cut = if breaking { data.len() as u64 * 2 / 5 } else { u64::MAX };
         Ok(Stream {
             body: Box::new(Breaking {
@@ -86,7 +89,7 @@ async fn play_all(flaky: Arc<Flaky>) -> (Vec<i16>, Recorder) {
 async fn a_broken_stream_resumes_on_the_exact_sample() {
     let flaky = Arc::new(Flaky {
         seconds: 1.0,
-        breaks: AtomicU32::new(1),
+        breaks: Mutex::new(1),
         live: false,
         opens: Mutex::new(vec![]),
     });
@@ -99,7 +102,7 @@ async fn a_broken_stream_resumes_on_the_exact_sample() {
     // seam.
     let (unbroken, _) = play_all(Arc::new(Flaky {
         seconds: 1.0,
-        breaks: AtomicU32::new(0),
+        breaks: Mutex::new(0),
         live: false,
         opens: Mutex::new(vec![]),
     }))
@@ -113,7 +116,7 @@ async fn a_broken_stream_resumes_on_the_exact_sample() {
 async fn a_stream_that_keeps_breaking_fails_after_three_reopens() {
     let flaky = Arc::new(Flaky {
         seconds: 1.0,
-        breaks: AtomicU32::new(u32::MAX),
+        breaks: Mutex::new(u32::MAX),
         live: false,
         opens: Mutex::new(vec![]),
     });
@@ -127,7 +130,7 @@ async fn a_stream_that_keeps_breaking_fails_after_three_reopens() {
 async fn a_live_stream_is_not_reopened() {
     let flaky = Arc::new(Flaky {
         seconds: 1.0,
-        breaks: AtomicU32::new(1),
+        breaks: Mutex::new(1),
         live: true,
         opens: Mutex::new(vec![]),
     });
