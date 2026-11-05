@@ -1,8 +1,22 @@
 # Introduction
 
+<img src="images/banner.svg" alt="Wavyzon: a standalone audio node for Discord bots, written in Rust">
+
 **Wavyzon** is a standalone audio node for Discord bots, written in Rust. It
 joins voice channels, streams and mixes music, and tells your bot *exactly*
 when each sound reached Discord.
+
+<div class="wz-cards">
+  <div class="wz-card"><strong>🎯 Wire clock</strong><p>Positions measured at the socket: lyrics and visuals line up with what people hear.</p></div>
+  <div class="wz-card"><strong>🎚️ Two-deck mixing</strong><p>Crossfades, gapless and automatic transitions, DJ voice-overs.</p></div>
+  <div class="wz-card"><strong>🔌 Lavalink v4</strong><p>lavalink-client, Shoukaku, Wavelink… connect unchanged.</p></div>
+  <div class="wz-card"><strong>🎛️ Equalizer APO</strong><p>Play through APO presets: EQ, GraphicEQ, convolution, reverb.</p></div>
+  <div class="wz-card"><strong>🔒 DAVE in pure Rust</strong><p>End-to-end encrypted voice, one static binary, no libdave.</p></div>
+  <div class="wz-card"><strong>🧩 Plugins</strong><p>Sources, filters, event listeners and HTTP routes in a few lines.</p></div>
+</div>
+
+New here? Start with the [Quick start](quick-start.md), or
+[deploy it on Pelican](guides/pelican.md) in a few clicks.
 
 If you have used [Lavalink](https://github.com/lavalink-devs/Lavalink), the
 model is the same: **your bot does the thinking, Wavyzon does the audio**, and
@@ -27,16 +41,10 @@ adds:
 
 ## How it fits together
 
-```text
- ┌───────────────┐   REST: load tracks, update players    ┌──────────────┐   UDP (Opus, AEAD, DAVE)   ┌─────────┐
- │   your bot    │ ─────────────────────────────────────► │   Wavyzon    │ ─────────────────────────► │ Discord │
- │ (any library) │ ◄───────────────────────────────────── │  :2333       │ ◄───── voice gateway ────► │  voice  │
- └───────┬───────┘   WebSocket: ready, playerUpdate,      └──────┬───────┘                            └─────────┘
-         │                      events                           │
-         │ gateway (VOICE_STATE / VOICE_SERVER_UPDATE)           │ HTTPS
-         ▼                                                       ▼
-   Discord gateway                               SoundCloud · Deezer · HTTP/radio · Spotify/Apple metadata · plugins
-```
+<figure>
+  <img src="images/overview.svg" alt="Your bot talks to Wavyzon over REST and a WebSocket; Wavyzon fetches audio from Deezer, SoundCloud, HTTP and plugins, mixes and filters it, and sends Opus over UDP to Discord voice every 20 ms.">
+  <figcaption>Your bot decides what to play; Wavyzon fetches, mixes, filters and sends the audio.</figcaption>
+</figure>
 
 1. Your bot opens a WebSocket to Wavyzon and receives a `sessionId`.
 2. It resolves something to play with `GET /v1/loadtracks`.
@@ -49,6 +57,10 @@ adds:
 
 | I want to… | Read |
 | --- | --- |
+| Get a node playing in ten minutes | [Quick start](quick-start.md) |
+| Run it on a Pelican / Pterodactyl panel | [Deploy on Pelican](guides/pelican.md) |
+| Copy working code for my bot | [Examples](examples.md) |
+| Use my Equalizer APO presets (EQ, reverb…) | [Equalizer APO](apo.md) |
 | Run a node | [Installation](installation.md), then [Configuration](configuration.md) |
 | Point an existing Lavalink bot at Wavyzon | [Lavalink v4 compatibility](lavalink.md) |
 | Write a client against the native protocol | [REST API](api/rest.md) and [WebSocket & events](api/websocket.md) |

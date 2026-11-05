@@ -75,7 +75,8 @@ passes through the proxy and needs no inbound port.
 has a panel egg (`egg-wavyzon.yaml` for Pelican,
 `egg-pterodactyl-wavyzon.json` for Pterodactyl) that builds Wavyzon from
 source at install time with the stock pelican-eggs images and exposes the
-settings as panel variables. Import it, set `WAVYZON_PASSWORD` and give
+settings as panel variables. Step by step, with pictures:
+[Deploy on Pelican](guides/pelican.md). In short: import it, set `WAVYZON_PASSWORD` and give
 the server a port; [its README](https://gitlab.com/ihrz/wavyzon/-/blob/main/contrib/pelican/README.md)
 covers memory needs during the build and how to update.
 

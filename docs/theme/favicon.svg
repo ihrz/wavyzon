@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Wavyzon">
+  <title>Wavyzon</title>
+  <defs>
+    <linearGradient id="wz-tile" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1B1640"/>
+      <stop offset="1" stop-color="#0B0918"/>
+    </linearGradient>
+    <radialGradient id="wz-halo" cx="256" cy="270" r="250" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7C5CFF" stop-opacity="0.45"/>
+      <stop offset="0.55" stop-color="#4F7BF7" stop-opacity="0.14"/>
+      <stop offset="1" stop-color="#22D3EE" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="wz-rim" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#A893FF" stop-opacity="0.55"/>
+      <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0.06"/>
+      <stop offset="1" stop-color="#22D3EE" stop-opacity="0.45"/>
+    </linearGradient>
+    <linearGradient id="wz-wave" x1="96" y1="0" x2="416" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#9D85FF"/>
+      <stop offset="0.5" stop-color="#C9C0FF"/>
+      <stop offset="1" stop-color="#5EE6F7"/>
+    </linearGradient>
+    <linearGradient id="wz-echo" x1="96" y1="0" x2="416" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7C5CFF" stop-opacity="0"/>
+      <stop offset="0.45" stop-color="#38BDF8" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#22D3EE" stop-opacity="0.9"/>
+    </linearGradient>
+    <linearGradient id="wz-bars" x1="64" y1="0" x2="434" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#9D85FF" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#C9C0FF" stop-opacity="0.13"/>
+      <stop offset="1" stop-color="#5EE6F7" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="wz-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="14"/>
+    </filter>
+    <filter id="wz-dotglow" x="-200%" y="-200%" width="500%" height="500%">
+      <feGaussianBlur stdDeviation="9"/>
+    </filter>
+    <clipPath id="wz-clip"><rect width="512" height="512" rx="116"/></clipPath>
+  </defs>
+  <g id="wz-mark">
+    <!-- tile: Night Ink with a violet halo and a gradient rim -->
+    <g clip-path="url(#wz-clip)">
+      <rect width="512" height="512" fill="url(#wz-tile)"/>
+      <rect width="512" height="512" fill="url(#wz-halo)"/>
+      <!-- the stream: faint waveform bars -->
+      <g fill="url(#wz-bars)">
+        <rect x="64" y="420" width="10" height="28" rx="5"/>
+        <rect x="88" y="408" width="10" height="52" rx="5"/>
+        <rect x="112" y="414" width="10" height="40" rx="5"/>
+        <rect x="136" y="398" width="10" height="72" rx="5"/>
+        <rect x="160" y="410" width="10" height="48" rx="5"/>
+        <rect x="184" y="402" width="10" height="64" rx="5"/>
+        <rect x="208" y="416" width="10" height="36" rx="5"/>
+        <rect x="232" y="394" width="10" height="80" rx="5"/>
+        <rect x="256" y="406" width="10" height="56" rx="5"/>
+        <rect x="280" y="398" width="10" height="72" rx="5"/>
+        <rect x="304" y="412" width="10" height="44" rx="5"/>
+        <rect x="328" y="404" width="10" height="60" rx="5"/>
+        <rect x="352" y="416" width="10" height="36" rx="5"/>
+        <rect x="376" y="408" width="10" height="52" rx="5"/>
+        <rect x="400" y="418" width="10" height="32" rx="5"/>
+        <rect x="424" y="422" width="10" height="24" rx="5"/>
+      </g>
+    </g>
+    <rect x="2" y="2" width="508" height="508" rx="114" fill="none" stroke="url(#wz-rim)" stroke-width="4"/>
+    <!-- deck B: the incoming echo, fading in from the left -->
+    <path d="M112 186C160 186 162 352 204 352S240 226 270 226S302 352 334 352S376 186 428 186" fill="none" stroke="url(#wz-echo)" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- deck A: the wave "W", with its glow -->
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M96 168C144 168 146 334 188 334S224 208 256 208S288 334 320 334S362 168 416 168" stroke="#8C74FF" stroke-opacity="0.7" stroke-width="44" filter="url(#wz-glow)"/>
+      <path d="M96 168C144 168 146 334 188 334S224 208 256 208S288 334 320 334S362 168 416 168" stroke="url(#wz-wave)" stroke-width="44"/>
+    </g>
+    <!-- the playhead: the wire clock, on the crossfade peak -->
+    <circle cx="256" cy="208" r="22" fill="#FFFFFF" fill-opacity="0.8" filter="url(#wz-dotglow)"/>
+    <circle cx="256" cy="208" r="12" fill="#FFFFFF"/>
+  </g>
+</svg>

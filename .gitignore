@@ -13,6 +13,8 @@
 
 # Build and coverage output
 /public
+/docs/book
+/.mdbook
 *.profraw
 *.profdata
 lcov.info

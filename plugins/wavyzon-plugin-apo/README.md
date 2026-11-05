@@ -14,7 +14,7 @@ Drop `.txt` presets and their impulse responses (`.wav`, `.flac`, `.ogg`) in
 `POST /v1/plugins/apo/reload`. `GET /v1/plugins/apo/` lists what loaded and
 what was skipped; `POST /v1/plugins/apo/check` validates a config.
 
-Supported commands, limits and routes: [Filters → Equalizer APO](../../docs/src/filters.md#equalizer-apo-configurations-apo).
+Supported commands, limits and routes: [Equalizer APO](../../docs/src/apo.md).
 `Reverb: Mix 30 % Room 70 % Damping 50 %` is a Wavyzon extension; APO ignores
 it, so presets stay usable in APO.
 

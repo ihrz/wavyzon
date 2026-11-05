@@ -214,8 +214,8 @@ docker-check:
     - docker build --tag wavyzon:ci .
 
 # ---------------------------------------------------------------------------
-# GitLab Pages: API reference (cargo doc) under /api/ and docs/ rendered to
-# HTML under /docs/. https://ihrz.gitlab.io/wavyzon/
+# GitLab Pages: landing page, the mdBook under /docs/ and the API reference
+# (cargo doc) under /api/. https://ihrz.gitlab.io/wavyzon/
 # ---------------------------------------------------------------------------
 pages:
   extends: .rust
@@ -223,65 +223,31 @@ pages:
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   needs: []
+  variables:
+    MDBOOK_VERSION: "0.5.4"
+  cache:
+    key:
+      files: [Cargo.lock]
+      prefix: cargo-$CI_JOB_NAME_SLUG
+    paths:
+      - .cargo-home/registry/index/
+      - .cargo-home/registry/cache/
+      - .cargo-home/git/db/
+      - target/
+      - .mdbook/
+    policy: pull-push
   script:
-    - apt-get install -y -qq --no-install-recommends pandoc > /dev/null
+    # mdBook, built once and kept in the cache.
+    - |
+      if ! .mdbook/bin/mdbook --version 2>/dev/null | grep -q "v$MDBOOK_VERSION"; then
+        cargo install mdbook --version "$MDBOOK_VERSION" --locked --root .mdbook
+      fi
+    - .mdbook/bin/mdbook build docs --dest-dir ../public/docs
     - cargo doc --workspace --no-deps --all-features --locked
-    - mkdir -p public/api public/docs public/assets
+    - mkdir -p public/api public/assets
     - cp -r target/doc/. public/api/
     - cp assets/*.svg assets/*.png public/assets/
-    - |
-      # Render every Markdown file in docs/ (keeping the folder layout), and
-      # rewrite links between them from .md to .html.
-      cat > /tmp/md-links.lua <<'LUA'
-      function Link(l)
-        if not l.target:match("^%a[%w+.-]*:") then
-          l.target = l.target:gsub("%.md$", ".html"):gsub("%.md#", ".html#")
-        end
-        return l
-      end
-      LUA
-      if [ -d docs ]; then
-        find docs -type f ! -name '*.md' -exec sh -c 'mkdir -p "public/$(dirname "$1")" && cp "$1" "public/$1"' _ {} \;
-        find docs -type f -name '*.md' | while read -r f; do
-          out="public/${f%.md}.html"
-          mkdir -p "$(dirname "$out")"
-          title="$(grep -m1 '^# ' "$f" | sed 's/^# //')"
-          pandoc "$f" --from gfm --to html5 --standalone \
-            --metadata title="${title:-Wavyzon}" --metadata pagetitle="${title:-Wavyzon} - Wavyzon" \
-            --lua-filter=/tmp/md-links.lua \
-            --output "$out"
-        done
-        [ -f public/docs/README.html ] && [ ! -f public/docs/index.html ] && cp public/docs/README.html public/docs/index.html || true
-      fi
-    - |
-      cat > public/index.html <<HTML
-      <!doctype html>
-      <html lang="en">
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Wavyzon</title>
-        <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
-        <style>
-          :root { color-scheme: light dark; --bg:#F6F5FF; --fg:#0D0B1A; --muted:#5B5675; --accent:#7C5CFF; }
-          @media (prefers-color-scheme: dark) { :root { --bg:#0D0B1A; --fg:#F6F5FF; --muted:#A8A3C7; --accent:#22D3EE; } }
-          body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.6 system-ui, sans-serif; }
-          main { max-width:960px; margin:0 auto; padding:32px 16px; }
-          img { max-width:100%; height:auto; border-radius:12px; }
-          a { color:var(--accent); } p { color:var(--muted); }
-          ul { padding-left:20px; }
-        </style>
-      </head>
-      <body><main>
-        <img src="assets/banner.svg" alt="Wavyzon: a standalone audio node for Discord bots, written in Rust">
-        <ul>
-          <li><a href="docs/">Documentation</a></li>
-          <li><a href="api/wavyzon_plugin/">Plugin API reference</a> (<a href="api/">all crates</a>)</li>
-          <li><a href="https://gitlab.com/ihrz/wavyzon">Source on GitLab</a> &middot; <a href="https://github.com/ihrz/wavyzon">GitHub mirror</a></li>
-        </ul>
-        <p>Built from ${CI_COMMIT_SHORT_SHA}. Licensed under CC BY-NC-SA 4.0.</p>
-      </main></body>
-      </html>
-      HTML
+    - sed "s/__COMMIT__/${CI_COMMIT_SHORT_SHA}/" docs/landing/index.html > public/index.html
+    - test -f public/docs/index.html && test -f public/docs/guides/pelican.html
   artifacts:
     paths: [public]

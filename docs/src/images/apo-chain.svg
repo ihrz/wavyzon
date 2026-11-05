@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 360" role="img" aria-labelledby="t d" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif">
+  <title id="t">Where the Equalizer APO filter runs</title>
+  <desc id="d">Each deck decodes its track, applies the built-in filters, then the plugin filters. The apo filter runs its stages in file order: preamp, parametric filters, GraphicEQ, convolution, delay and copy, reverb. The two decks are mixed, encoded to Opus and sent to Discord. Presets and impulse responses are loaded at startup or on reload, never on the audio path.</desc>
+  <defs>
+    <linearGradient id="wz-a" x1="0" x2="1">
+      <stop offset="0" stop-color="#7C5CFF"/>
+      <stop offset="1" stop-color="#22D3EE"/>
+    </linearGradient>
+    <marker id="aa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0 L10 5 L0 10 z" fill="#A8A3C7"/>
+    </marker>
+  </defs>
+  <rect width="960" height="360" rx="18" fill="#0D0B1A"/>
+
+  <g font-size="13" text-anchor="middle">
+    <rect x="20" y="48" width="100" height="60" rx="10" fill="#241F45"/>
+    <text x="70" y="74" fill="#F6F5FF" font-weight="600">Track</text>
+    <text x="70" y="93" fill="#A8A3C7" font-size="11.5">decoded, 48 kHz</text>
+    <rect x="144" y="48" width="138" height="60" rx="10" fill="#241F45"/>
+    <text x="213" y="74" fill="#F6F5FF" font-weight="600">Built-in filters</text>
+    <text x="213" y="93" fill="#A8A3C7" font-size="11.5">EQ, timescale…</text>
+    <path d="M121 78 h21" stroke="#A8A3C7" stroke-width="2" marker-end="url(#aa)"/>
+    <path d="M283 78 h19" stroke="#A8A3C7" stroke-width="2" marker-end="url(#aa)"/>
+
+    <!-- apo block -->
+    <rect x="304" y="22" width="460" height="192" rx="14" fill="#17142B" stroke="url(#wz-a)" stroke-width="2"/>
+    <text x="534" y="46" fill="#F6F5FF" font-size="15" font-weight="700">pluginFilters.apo — stages run in file order</text>
+    <rect x="320" y="62" width="88" height="54" rx="9" fill="#241F45"/><text x="364" y="85" fill="#F6F5FF" font-weight="600">Preamp</text><text x="364" y="103" fill="#A8A3C7" font-size="11.5">gain</text>
+    <rect x="418" y="62" width="104" height="54" rx="9" fill="#241F45"/><text x="470" y="85" fill="#F6F5FF" font-weight="600">Filter</text><text x="470" y="103" fill="#A8A3C7" font-size="11.5">PK LS HS LP HP…</text>
+    <rect x="532" y="62" width="104" height="54" rx="9" fill="#241F45"/><text x="584" y="85" fill="#F6F5FF" font-weight="600">GraphicEQ</text><text x="584" y="103" fill="#A8A3C7" font-size="11.5">min-phase FIR</text>
+    <rect x="646" y="62" width="104" height="54" rx="9" fill="#241F45"/><text x="698" y="85" fill="#F6F5FF" font-weight="600">Convolution</text><text x="698" y="103" fill="#A8A3C7" font-size="11.5">IR, 20 ms parts</text>
+    <rect x="320" y="132" width="140" height="54" rx="9" fill="#241F45"/><text x="390" y="155" fill="#F6F5FF" font-weight="600">Channel · Copy</text><text x="390" y="173" fill="#A8A3C7" font-size="11.5">route L / R</text>
+    <rect x="470" y="132" width="120" height="54" rx="9" fill="#241F45"/><text x="530" y="155" fill="#F6F5FF" font-weight="600">Delay</text><text x="530" y="173" fill="#A8A3C7" font-size="11.5">ms or samples</text>
+    <rect x="600" y="132" width="150" height="54" rx="9" fill="#241F45" stroke="#22D3EE" stroke-width="1.4"/><text x="675" y="155" fill="#F6F5FF" font-weight="600">Reverb</text><text x="675" y="173" fill="#22D3EE" font-size="11.5">Wavyzon extension</text>
+
+    <path d="M764 118 h20" stroke="#A8A3C7" stroke-width="2" marker-end="url(#aa)"/>
+    <rect x="788" y="48" width="148" height="140" rx="10" fill="#241F45"/>
+    <text x="862" y="78" fill="#F6F5FF" font-weight="600">Mix deck A + B</text>
+    <text x="862" y="100" fill="#A8A3C7" font-size="12">crossfade</text>
+    <text x="862" y="134" fill="#F6F5FF" font-weight="600">Opus · DAVE</text>
+    <text x="862" y="156" fill="#A8A3C7" font-size="12">→ Discord</text>
+  </g>
+
+  <!-- presets -->
+  <rect x="24" y="244" width="912" height="92" rx="14" fill="#17142B" stroke="#2C2750"/>
+  <text x="44" y="272" fill="#F6F5FF" font-size="14" font-weight="700">Presets directory</text>
+  <text x="44" y="296" fill="#A8A3C7" font-size="13"><tspan font-family="ui-monospace, Menlo, monospace" fill="#22D3EE">data/plugins/apo/</tspan>  *.txt configurations · *.wav / *.flac / *.ogg impulse responses · Include: sub-files</text>
+  <text x="44" y="320" fill="#A8A3C7" font-size="13">Read and compiled at startup and on <tspan font-family="ui-monospace, Menlo, monospace" fill="#F6F5FF">POST /v1/plugins/apo/reload</tspan> — never while audio plays. ~1 % of a core per heavy preset.</text>
+</svg>

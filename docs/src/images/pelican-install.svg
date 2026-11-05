@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 430" role="img" aria-labelledby="t d" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif">
+  <title id="t">Wavyzon on Pelican: import, install, run</title>
+  <desc id="d">Step 1, import the egg in the admin panel. Step 2, the install container builds Wavyzon from source and keeps only the binary. Step 3, the server container runs ./wavyzon on the allocated port; the panel marks it running on the line "wavyzon listening", and Stop sends Ctrl+C which saves the sessions.</desc>
+  <defs>
+    <linearGradient id="wz-p" x1="0" x2="1">
+      <stop offset="0" stop-color="#7C5CFF"/>
+      <stop offset="1" stop-color="#22D3EE"/>
+    </linearGradient>
+    <marker id="pa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0 0 L10 5 L0 10 z" fill="#A8A3C7"/>
+    </marker>
+  </defs>
+  <rect width="960" height="430" rx="18" fill="#0D0B1A"/>
+  <rect x="0" y="0" width="960" height="6" rx="3" fill="url(#wz-p)"/>
+
+  <g font-size="13">
+    <!-- step 1 -->
+    <rect x="28" y="40" width="270" height="300" rx="16" fill="#17142B" stroke="#2C2750"/>
+    <circle cx="62" cy="76" r="18" fill="#7C5CFF"/><text x="62" y="82" fill="#fff" font-size="17" font-weight="800" text-anchor="middle">1</text>
+    <text x="92" y="82" fill="#F6F5FF" font-size="18" font-weight="700">Import the egg</text>
+    <text x="48" y="122" fill="#A8A3C7">Admin → Eggs → Import</text>
+    <rect x="48" y="136" width="230" height="34" rx="8" fill="#241F45"/>
+    <text x="62" y="158" fill="#22D3EE" font-family="ui-monospace, Menlo, monospace" font-size="12.5">egg-wavyzon.yaml</text>
+    <text x="48" y="200" fill="#A8A3C7">Create a server with it:</text>
+    <text x="58" y="224" fill="#F6F5FF">• set <tspan fill="#22D3EE" font-family="ui-monospace, Menlo, monospace">Password</tspan> (8+ chars)</text>
+    <text x="58" y="246" fill="#F6F5FF">• give it a port (2333)</text>
+    <text x="58" y="268" fill="#F6F5FF">• 2 GB RAM per build job</text>
+    <text x="48" y="306" fill="#5B5675" font-size="12">Pterodactyl: egg-pterodactyl-</text>
+    <text x="48" y="322" fill="#5B5675" font-size="12">wavyzon.json, same steps</text>
+
+    <line x1="304" y1="190" x2="336" y2="190" stroke="#A8A3C7" stroke-width="2.5" marker-end="url(#pa)"/>
+
+    <!-- step 2 -->
+    <rect x="344" y="40" width="270" height="300" rx="16" fill="#17142B" stroke="#2C2750"/>
+    <circle cx="378" cy="76" r="18" fill="#5F82F5"/><text x="378" y="82" fill="#fff" font-size="17" font-weight="800" text-anchor="middle">2</text>
+    <text x="408" y="82" fill="#F6F5FF" font-size="18" font-weight="700">Install (build)</text>
+    <text x="364" y="122" fill="#A8A3C7">installers:debian, ~2 min</text>
+    <g font-family="ui-monospace, Menlo, monospace" font-size="12" fill="#F6F5FF">
+      <rect x="364" y="136" width="230" height="150" rx="8" fill="#241F45"/>
+      <text x="376" y="160">apt: build-essential cmake</text>
+      <text x="376" y="182">rustup: stable (minimal)</text>
+      <text x="376" y="204">git clone <tspan fill="#22D3EE">WAVYZON_REF</tspan></text>
+      <text x="376" y="226">cargo build --release</text>
+      <text x="376" y="248">keep ./wavyzon</text>
+      <text x="376" y="270" fill="#A8A3C7">rm toolchain + build tree</text>
+    </g>
+    <text x="364" y="314" fill="#5B5675" font-size="12">Update = change the branch/tag,</text>
+    <text x="364" y="330" fill="#5B5675" font-size="12">then Reinstall (data is kept)</text>
+
+    <line x1="620" y1="190" x2="652" y2="190" stroke="#A8A3C7" stroke-width="2.5" marker-end="url(#pa)"/>
+
+    <!-- step 3 -->
+    <rect x="660" y="40" width="272" height="300" rx="16" fill="#17142B" stroke="url(#wz-p)" stroke-width="2"/>
+    <circle cx="694" cy="76" r="18" fill="#22D3EE"/><text x="694" y="82" fill="#0D0B1A" font-size="17" font-weight="800" text-anchor="middle">3</text>
+    <text x="724" y="82" fill="#F6F5FF" font-size="18" font-weight="700">Run</text>
+    <text x="680" y="122" fill="#A8A3C7">yolks:debian or yolks:ubuntu</text>
+    <rect x="680" y="136" width="232" height="54" rx="8" fill="#241F45"/>
+    <text x="692" y="158" fill="#F6F5FF" font-family="ui-monospace, Menlo, monospace" font-size="11.5">WAVYZON_ADDRESS=0.0.0.0:</text>
+    <text x="692" y="178" fill="#F6F5FF" font-family="ui-monospace, Menlo, monospace" font-size="11.5"><tspan fill="#22D3EE">{{SERVER_PORT}}</tspan> ./wavyzon</text>
+    <text x="680" y="218" fill="#F6F5FF">“wavyzon listening” → <tspan fill="#4ADE80" font-weight="700">Running</tspan></text>
+    <text x="680" y="244" fill="#F6F5FF">Stop sends ^C → sessions saved</text>
+    <text x="680" y="270" fill="#F6F5FF">Bot: host, port, password</text>
+    <text x="680" y="314" fill="#5B5675" font-size="12">No start script, stock images,</text>
+    <text x="680" y="330" fill="#5B5675" font-size="12">only glibc needed at runtime</text>
+  </g>
+
+  <!-- file tree -->
+  <g font-family="ui-monospace, Menlo, monospace" font-size="12.5">
+    <text x="28" y="378" fill="#A8A3C7" font-family="system-ui, sans-serif" font-size="13">/home/container after the install:</text>
+    <text x="28" y="404" fill="#F6F5FF">wavyzon</text>
+    <text x="110" y="404" fill="#F6F5FF">data/ <tspan fill="#5B5675">(plugins/apo/ presets)</tspan></text>
+    <text x="370" y="404" fill="#F6F5FF">cache/ <tspan fill="#5B5675">(audio cache)</tspan></text>
+    <text x="560" y="404" fill="#F6F5FF">state.json <tspan fill="#5B5675">(resume)</tspan></text>
+    <text x="760" y="404" fill="#F6F5FF">LICENSE NOTICE</text>
+  </g>
+</svg>

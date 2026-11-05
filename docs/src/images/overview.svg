@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 470" role="img" aria-labelledby="t d" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif">
+  <title id="t">How Wavyzon fits between your bot and Discord</title>
+  <desc id="d">Your bot sends REST requests and receives WebSocket events from Wavyzon. Wavyzon fetches audio from sources, decodes, mixes and filters it on two decks, encodes Opus and sends it over UDP to Discord voice, encrypted with DAVE, every 20 ms.</desc>
+  <defs>
+    <linearGradient id="wz-g" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0" stop-color="#7C5CFF"/>
+      <stop offset="1" stop-color="#22D3EE"/>
+    </linearGradient>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#A8A3C7"/>
+    </marker>
+  </defs>
+  <rect width="960" height="470" rx="18" fill="#0D0B1A"/>
+
+  <!-- bot -->
+  <rect x="28" y="70" width="210" height="150" rx="14" fill="#17142B" stroke="#2C2750"/>
+  <text x="133" y="104" fill="#F6F5FF" font-size="19" font-weight="700" text-anchor="middle">Your bot</text>
+  <text x="133" y="132" fill="#A8A3C7" font-size="13" text-anchor="middle">discord.js · Python · Java…</text>
+  <text x="133" y="152" fill="#A8A3C7" font-size="13" text-anchor="middle">lavalink-client, Shoukaku,</text>
+  <text x="133" y="172" fill="#A8A3C7" font-size="13" text-anchor="middle">Wavelink… or raw /v1</text>
+  <text x="133" y="201" fill="#22D3EE" font-size="12" text-anchor="middle">decides what to play</text>
+
+  <!-- arrows bot <-> wavyzon -->
+  <line x1="246" y1="118" x2="318" y2="118" stroke="#A8A3C7" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="282" y="108" fill="#F6F5FF" font-size="12" text-anchor="middle">REST</text>
+  <line x1="318" y1="172" x2="246" y2="172" stroke="#A8A3C7" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="282" y="194" fill="#F6F5FF" font-size="12" text-anchor="middle">WebSocket</text>
+  <text x="282" y="210" fill="#A8A3C7" font-size="11" text-anchor="middle">events</text>
+
+  <!-- wavyzon -->
+  <rect x="326" y="34" width="420" height="250" rx="16" fill="#17142B" stroke="url(#wz-g)" stroke-width="2.5"/>
+  <text x="536" y="66" fill="#F6F5FF" font-size="21" font-weight="800" text-anchor="middle">Wavyzon <tspan fill="#A8A3C7" font-size="14" font-weight="500">:2333</tspan></text>
+  <g font-size="13" text-anchor="middle">
+    <rect x="346" y="88" width="112" height="56" rx="10" fill="#241F45"/>
+    <text x="402" y="112" fill="#F6F5FF" font-weight="600">Resolve &amp;</text>
+    <text x="402" y="130" fill="#F6F5FF" font-weight="600">decode</text>
+    <rect x="480" y="88" width="112" height="56" rx="10" fill="#241F45"/>
+    <text x="536" y="112" fill="#F6F5FF" font-weight="600">Deck A + B</text>
+    <text x="536" y="130" fill="#A8A3C7">crossfades</text>
+    <rect x="614" y="88" width="112" height="56" rx="10" fill="#241F45"/>
+    <text x="670" y="112" fill="#F6F5FF" font-weight="600">Filters</text>
+    <text x="670" y="130" fill="#A8A3C7" font-size="12">EQ · APO · plugins</text>
+    <rect x="346" y="160" width="184" height="56" rx="10" fill="#241F45"/>
+    <text x="438" y="184" fill="#F6F5FF" font-weight="600">Opus + DAVE (E2EE)</text>
+    <text x="438" y="202" fill="#A8A3C7">pure Rust, no libdave</text>
+    <rect x="542" y="160" width="184" height="56" rx="10" fill="#241F45" stroke="#22D3EE" stroke-width="1.5"/>
+    <text x="634" y="184" fill="#F6F5FF" font-weight="600">Send loop · 20 ms</text>
+    <text x="634" y="202" fill="#22D3EE">wire clock</text>
+  </g>
+  <path d="M459 116 h19" stroke="#A8A3C7" stroke-width="2" marker-end="url(#arr)"/>
+  <path d="M593 116 h19" stroke="#A8A3C7" stroke-width="2" marker-end="url(#arr)"/>
+  <path d="M670 144 v7 h-232 v7" fill="none" stroke="#A8A3C7" stroke-width="2" marker-end="url(#arr)"/>
+  <path d="M530 188 h10" stroke="#A8A3C7" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="536" y="252" fill="#A8A3C7" font-size="12.5" text-anchor="middle">Positions are measured when each packet leaves the socket,</text>
+  <text x="536" y="270" fill="#A8A3C7" font-size="12.5" text-anchor="middle">so lyrics and events line up with what listeners hear.</text>
+
+  <!-- discord -->
+  <line x1="754" y1="188" x2="822" y2="188" stroke="#A8A3C7" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="788" y="178" fill="#F6F5FF" font-size="12" text-anchor="middle">UDP</text>
+  <rect x="830" y="140" width="104" height="96" rx="14" fill="#17142B" stroke="#2C2750"/>
+  <text x="882" y="182" fill="#F6F5FF" font-size="17" font-weight="700" text-anchor="middle">Discord</text>
+  <text x="882" y="202" fill="#A8A3C7" font-size="13" text-anchor="middle">voice</text>
+
+  <!-- gateway path -->
+  <path d="M133 220 V420 H882 V244" fill="none" stroke="#5B5675" stroke-width="1.6" stroke-dasharray="5 5" marker-end="url(#arr)"/>
+  <text x="300" y="440" fill="#A8A3C7" font-size="12">Discord gateway: your bot joins the channel and forwards the voice session to Wavyzon</text>
+
+  <!-- sources -->
+  <line x1="536" y1="340" x2="536" y2="292" stroke="#A8A3C7" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="548" y="322" fill="#F6F5FF" font-size="12">HTTPS</text>
+  <g font-size="12.5" text-anchor="middle">
+    <rect x="300" y="346" width="96" height="34" rx="17" fill="#241F45"/><text x="348" y="368" fill="#F6F5FF">Deezer</text>
+    <rect x="404" y="346" width="110" height="34" rx="17" fill="#241F45"/><text x="459" y="368" fill="#F6F5FF">SoundCloud</text>
+    <rect x="522" y="346" width="118" height="34" rx="17" fill="#241F45"/><text x="581" y="368" fill="#F6F5FF">HTTP · radio</text>
+    <rect x="648" y="346" width="136" height="34" rx="17" fill="#241F45"/><text x="716" y="368" fill="#A8A3C7">Spotify · Apple*</text>
+    <rect x="792" y="346" width="90" height="34" rx="17" fill="#241F45"/><text x="837" y="368" fill="#F6F5FF">plugins</text>
+  </g>
+  <text x="716" y="398" fill="#A8A3C7" font-size="11" text-anchor="middle">* metadata, matched by ISRC</text>
+</svg>

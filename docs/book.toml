@@ -17,6 +17,7 @@ site-url = "/wavyzon/docs/"
 default-theme = "light"
 preferred-dark-theme = "ayu"
 no-section-label = false
+additional-css = ["theme/wavyzon.css"]
 
 [output.html.fold]
 enable = true

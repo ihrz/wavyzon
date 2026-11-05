@@ -4,7 +4,10 @@
 
 # Getting started
 
+- [Quick start](quick-start.md)
+- [Examples](examples.md)
 - [Installation](installation.md)
+- [Deploy on Pelican](guides/pelican.md)
 - [Configuration](configuration.md)
 
 # Protocol
@@ -18,6 +21,7 @@
 - [The wire clock](wire-clock.md)
 - [Mixing & crossfades](mixing.md)
 - [Filters](filters.md)
+  - [Equalizer APO](apo.md)
 - [Sources](sources.md)
 
 # Extending Wavyzon

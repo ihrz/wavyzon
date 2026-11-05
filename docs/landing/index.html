@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Wavyzon</title>
+  <meta name="description" content="Wavyzon: a standalone audio node for Discord bots, written in Rust. Lavalink v4 compatible, frame-accurate wire clock, two-deck mixing, Equalizer APO filters.">
+  <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #F6F5FF; --fg: #0D0B1A; --muted: #5B5675; --card: #FFFFFF; --line: #E2DEFA;
+      --accent: #5B3FE0; --accent2: #0891B2; --code: #0D0B1A; --code-fg: #F6F5FF;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #0D0B1A; --fg: #F6F5FF; --muted: #A8A3C7; --card: #17142B; --line: #2C2750;
+              --accent: #9D86FF; --accent2: #22D3EE; --code: #17142B; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
+    .bar { height: 4px; background: linear-gradient(90deg, #7C5CFF, #22D3EE); }
+    main { max-width: 1040px; margin: 0 auto; padding: 32px 16px 48px; }
+    .hero img { width: 100%; height: auto; border-radius: 16px; display: block; }
+    .lead { font-size: 1.2rem; color: var(--muted); max-width: 760px; margin: 22px 0 18px; }
+    .cta { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 36px; }
+    .btn { display: inline-block; padding: 10px 18px; border-radius: 999px; text-decoration: none; font-weight: 650;
+           border: 1px solid var(--line); color: var(--fg); background: var(--card); }
+    .btn.primary { background: linear-gradient(90deg, #7C5CFF, #22D3EE); color: #fff; border: 0; }
+    .btn:hover { filter: brightness(1.08); }
+    h2 { font-size: 1.35rem; margin: 40px 0 14px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; }
+    .card b { display: block; margin-bottom: 6px; font-size: 1.02rem; }
+    .card p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+    .card a { color: var(--accent); }
+    pre { background: var(--code); color: var(--code-fg); padding: 16px 18px; border-radius: 12px; overflow-x: auto;
+          font: 14px/1.55 ui-monospace, Menlo, Consolas, monospace; margin: 0; }
+    pre .c { color: #A8A3C7; }
+    .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+    .two h3 { margin: 0 0 8px; font-size: 1rem; }
+    figure { margin: 0; }
+    figure img { width: 100%; height: auto; border-radius: 14px; display: block; }
+    footer { margin-top: 48px; color: var(--muted); font-size: 0.9rem; border-top: 1px solid var(--line); padding-top: 16px; }
+    footer a, .links a { color: var(--accent); }
+    .links { display: flex; flex-wrap: wrap; gap: 6px 18px; }
+  </style>
+</head>
+<body>
+<div class="bar"></div>
+<main>
+  <section class="hero">
+    <img src="assets/banner.svg" alt="Wavyzon: a standalone audio node for Discord bots, written in Rust">
+    <p class="lead">Your bot decides what to play; Wavyzon joins the voice channel, streams, mixes and filters the music,
+      and tells your bot <em>exactly</em> when each sound reached Discord. It speaks Lavalink v4, so most bots switch by
+      changing a host and a password.</p>
+    <div class="cta">
+      <a class="btn primary" href="docs/quick-start.html">Quick start</a>
+      <a class="btn" href="docs/guides/pelican.html">Deploy on Pelican</a>
+      <a class="btn" href="docs/examples.html">Examples</a>
+      <a class="btn" href="docs/">Documentation</a>
+      <a class="btn" href="https://gitlab.com/ihrz/wavyzon">Source</a>
+    </div>
+  </section>
+
+  <figure>
+    <img src="docs/images/overview.svg" alt="Your bot talks to Wavyzon over REST and a WebSocket; Wavyzon fetches audio from Deezer, SoundCloud, HTTP and plugins, mixes and filters it, and sends Opus over UDP to Discord voice every 20 ms.">
+  </figure>
+
+  <h2>What you get</h2>
+  <div class="grid">
+    <div class="card"><b>🎯 Wire clock</b><p>Positions measured when packets leave the socket: synced lyrics and progress bars line up with what people hear. <a href="docs/wire-clock.html">How</a></p></div>
+    <div class="card"><b>🎚️ Two-deck mixing</b><p>Automatic crossfades into the next track, gapless albums, manual transitions and DJ voice-overs. <a href="docs/mixing.html">Mixing</a></p></div>
+    <div class="card"><b>🔌 Lavalink v4</b><p>lavalink-client, Shoukaku, Moonlink, Wavelink, Lavalink4NET… connect unchanged. <a href="docs/lavalink.html">Compatibility</a></p></div>
+    <div class="card"><b>🎛️ Equalizer APO</b><p>Play through APO presets: AutoEQ, GraphicEQ, convolution reverbs, a one-line reverb. <a href="docs/apo.html">Filters</a></p></div>
+    <div class="card"><b>🎶 Sources</b><p>Deezer and SoundCloud playback, Spotify and Apple Music links matched by ISRC, HTTP files and radios. <a href="docs/sources.html">Sources</a></p></div>
+    <div class="card"><b>🔒 DAVE, pure Rust</b><p>Discord's end-to-end encryption without libdave: one static binary, no JVM. <a href="docs/architecture.html">Architecture</a></p></div>
+    <div class="card"><b>🧩 Plugins</b><p>Add sources, audio filters, event listeners and HTTP routes in a few lines of Rust. <a href="docs/plugins.html">Plugins</a></p></div>
+    <div class="card"><b>📈 Observable</b><p>Prometheus metrics, structured logs, every failure classified and counted. <a href="docs/observability.html">Metrics</a></p></div>
+  </div>
+
+  <h2>Run it</h2>
+  <div class="two">
+    <div>
+      <h3>Docker</h3>
+<pre><span class="c"># set WAVYZON_PASSWORD in .env</span>
+git clone https://gitlab.com/ihrz/wavyzon.git
+cd wavyzon &amp;&amp; cp .env.example .env
+docker compose up -d</pre>
+    </div>
+    <div>
+      <h3>Your bot (lavalink-client)</h3>
+<pre>nodes: [{
+  id: "wavyzon",
+  host: "localhost",
+  port: 2333,
+  authorization: process.env.WAVYZON_PASSWORD,
+}]</pre>
+    </div>
+  </div>
+  <p class="lead" style="font-size:1rem">On a game panel? <a class="btn" style="padding:4px 12px" href="docs/guides/pelican.html">Import the Pelican egg</a> and the panel builds and runs it.</p>
+
+  <h2>Reference</h2>
+  <div class="links">
+    <a href="docs/">Documentation</a>
+    <a href="docs/api/rest.html">REST API</a>
+    <a href="docs/api/websocket.html">WebSocket &amp; events</a>
+    <a href="docs/configuration.html">Configuration</a>
+    <a href="api/wavyzon_plugin/">Plugin API (rustdoc)</a>
+    <a href="api/">All crates</a>
+    <a href="docs/fr/introduction.html">Documentation en français</a>
+  </div>
+
+  <footer>
+    <span class="links"><a href="https://gitlab.com/ihrz/wavyzon">GitLab</a><a href="https://github.com/ihrz/wavyzon">GitHub mirror</a><a href="https://ihorizon.org">iHorizon</a></span>
+    <p>Built from __COMMIT__. Wavyzon is © 2026 Anaïs Saraiva and the iHorizon team, licensed under CC BY-NC-SA 4.0; a derived work of Cadence (MIT).</p>
+  </footer>
+</main>
+</body>
+</html>

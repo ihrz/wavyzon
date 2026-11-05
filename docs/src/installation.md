@@ -98,7 +98,7 @@ WAVYZON_PASSWORD=change-me WAVYZON_PLUGINS=example ./target/release/wavyzon
 
 Each plugin is a `plugin-<name>` cargo feature of the `wavyzon` crate;
 `plugin-example` and `plugin-apo` (Equalizer APO configurations, see
-[Filters](filters.md#equalizer-apo-configurations-apo)) are on by default
+[Equalizer APO](apo.md)) are on by default
 (`--no-default-features` builds a node with no plugins).
 
 ### Running the tests
