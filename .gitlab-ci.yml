@@ -215,7 +215,7 @@ docker-check:
 
 # ---------------------------------------------------------------------------
 # GitLab Pages: landing page, the mdBook under /docs/ and the API reference
-# (cargo doc) under /api/. https://ihrz.gitlab.io/wavyzon/
+# (cargo doc) under /api/. https://wavyzon.ihorizon.org/
 # ---------------------------------------------------------------------------
 pages:
   extends: .rust
