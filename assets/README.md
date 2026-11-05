@@ -6,6 +6,7 @@
 | `logo.png` | 512×512 PNG render of `logo.svg`, for places that do not accept SVG (GitLab/GitHub project avatar, Discord). |
 | `banner.svg` | 1280×320 banner with the mark, the name and the tagline, for the top of the README and social previews. Self-contained dark background; the mark is inlined (a README `<img>` cannot load other files). |
 | `icon-mono.svg` | Single-colour mark without the tile. Draws in `currentColor` (black when used as an `<img>`), for monochrome contexts, masks and print. |
+| `marketing/generate.py` | Renders the marketing pack (logo PNGs from 16 to 2048 px, one-colour marks, lockups, social cards and headers, Discord avatar and icons, square posts, a brand sheet) with headless Chromium: `python3 assets/marketing/generate.py <folder>`. Needs `chromium` and Fira Sans. Every visual uses "the wire": deck A's wave, deck B's echo, the playhead and a 20 ms frame ruler. |
 
 ## The mark
 
