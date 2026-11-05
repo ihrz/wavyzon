@@ -242,7 +242,7 @@ pages:
       if ! .mdbook/bin/mdbook --version 2>/dev/null | grep -q "v$MDBOOK_VERSION"; then
         cargo install mdbook --version "$MDBOOK_VERSION" --locked --root .mdbook
       fi
-    - .mdbook/bin/mdbook build docs --dest-dir ../public/docs
+    - .mdbook/bin/mdbook build docs --dest-dir "$CI_PROJECT_DIR/public/docs"
     - cargo doc --workspace --no-deps --all-features --locked
     - mkdir -p public/api public/assets
     - cp -r target/doc/. public/api/
