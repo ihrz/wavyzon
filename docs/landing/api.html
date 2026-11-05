@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>API reference - Wavyzon</title>
+  <meta name="description" content="Rust API reference (rustdoc) of the Wavyzon crates.">
+  <link rel="icon" href="../assets/logo.svg" type="image/svg+xml">
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #F6F5FF; --fg: #0D0B1A; --muted: #5B5675; --card: #FFFFFF; --line: #E2DEFA; --accent: #5B3FE0;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #0D0B1A; --fg: #F6F5FF; --muted: #A8A3C7; --card: #17142B; --line: #2C2750; --accent: #9D86FF; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
+    .bar { height: 4px; background: linear-gradient(90deg, #7C5CFF, #22D3EE); }
+    main { max-width: 880px; margin: 0 auto; padding: 32px 16px 48px; }
+    header { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+    header img { width: 44px; height: 44px; }
+    header a { color: var(--fg); text-decoration: none; font-weight: 700; font-size: 1.25rem; }
+    h1 { font-size: 1.9rem; margin: 18px 0 6px; letter-spacing: -0.01em; }
+    .lead { color: var(--muted); margin: 0 0 26px; }
+    .lead a { color: var(--accent); }
+    h2 { font-size: 1.05rem; margin: 30px 0 10px; color: var(--muted); font-weight: 600; }
+    ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+    li a { display: block; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px;
+           color: var(--fg); text-decoration: none; }
+    li a:hover, li a:focus-visible { border-color: var(--accent); outline: none; }
+    li b { display: block; color: var(--accent); font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: 600; }
+    li span { color: var(--muted); font-size: 0.95rem; }
+    footer { margin-top: 40px; color: var(--muted); font-size: 0.9rem; }
+    footer a { color: var(--accent); }
+  </style>
+</head>
+<body>
+<div class="bar"></div>
+<main>
+  <header><img src="../assets/logo.svg" alt=""><a href="../">Wavyzon</a></header>
+  <h1>API reference</h1>
+  <p class="lead">The rustdoc of every crate in the workspace. Writing a plugin? Start with <code>wavyzon_plugin</code>; the
+    <a href="../docs/plugins.html">plugin guide</a> walks through it.</p>
+
+  <h2>For plugin authors</h2>
+  <ul>
+    <li><a href="wavyzon_plugin/"><b>wavyzon_plugin</b><span>The plugin API (sources, audio filters, event listeners, HTTP routes) and the shared model: tracks, failures, events.</span></a></li>
+    <li><a href="wavyzon_plugin_example/"><b>wavyzon_plugin_example</b><span>A complete plugin using every extension point: tone source, bitcrush filter, event counter, stats route.</span></a></li>
+    <li><a href="wavyzon_plugin_apo/"><b>wavyzon_plugin_apo</b><span>Equalizer APO configurations as a playback filter: parser, biquads, GraphicEQ, partitioned convolution, reverb.</span></a></li>
+  </ul>
+
+  <h2>The node</h2>
+  <ul>
+    <li><a href="wavyzon/"><b>wavyzon</b><span>The binary: configuration, REST and WebSocket server, sessions and resume, Lavalink v4 layer, plugin host, metrics.</span></a></li>
+    <li><a href="wavyzon_player/"><b>wavyzon_player</b><span>The two-deck player: crossfades, gapless, voice-overs, filters and glides, loudness, events, wire clock.</span></a></li>
+    <li><a href="wavyzon_voice/"><b>wavyzon_voice</b><span>Discord voice: gateway v8, UDP/RTP, AEAD, DAVE end-to-end encryption, the 20 ms send loop.</span></a></li>
+    <li><a href="wavyzon_sources/"><b>wavyzon_sources</b><span>Deezer, SoundCloud, HTTP, local files, Spotify and Apple Music metadata, the resolver and ISRC matching, caches.</span></a></li>
+    <li><a href="wavyzon_analysis/"><b>wavyzon_analysis</b><span>Tempo, beats, key, phrases and loudness fingerprints, and the offline analysis queue.</span></a></li>
+    <li><a href="wavyzon_audio/"><b>wavyzon_audio</b><span>PCM format, DSP blocks (biquad, sinc resampler, WSOLA stretcher, crossfade), decoding and Opus encoding.</span></a></li>
+    <li><a href="wavyzon_testkit/"><b>wavyzon_testkit</b><span>Test helpers: a fake Discord voice gateway, mock sources and audio assertions.</span></a></li>
+  </ul>
+
+  <footer>Built from __COMMIT__. <a href="../docs/">Documentation</a>, <a href="https://gitlab.com/ihrz/wavyzon">source</a>.</footer>
+</main>
+</body>
+</html>

@@ -248,6 +248,12 @@ pages:
     - cp -r target/doc/. public/api/
     - cp assets/*.svg assets/*.png public/assets/
     - sed "s/__COMMIT__/${CI_COMMIT_SHORT_SHA}/" docs/landing/index.html > public/index.html
+    # rustdoc makes one folder per crate and no index: list them.
+    - sed "s/__COMMIT__/${CI_COMMIT_SHORT_SHA}/" docs/landing/api.html > public/api/index.html
     - test -f public/docs/index.html && test -f public/docs/guides/pelican.html
+    - |
+      for d in $(grep -o 'href="wavyzon[a-z_]*/"' public/api/index.html | cut -d'"' -f2); do
+        test -f "public/api/${d}index.html" || { echo "api/index.html links to missing crate docs: ${d}"; exit 1; }
+      done
   artifacts:
     paths: [public]
