@@ -154,6 +154,57 @@ The example plugin's `bitcrush`:
 | `downsample` | 1 | 1–64 | Keep one sample in N (sample-and-hold) |
 | `mix` | 1.0 | 0–1 | Dry/wet |
 
+### Equalizer APO configurations (`apo`)
+
+The `apo` plugin (cargo feature `plugin-apo`, on by default) plays through
+[Equalizer APO](https://sourceforge.net/projects/equalizerapo/)
+configuration files: AutoEQ headphone corrections, REW exports, hand-written
+EQ, convolution reverbs. Use a preset from the presets directory, or send the
+text inline:
+
+```json
+{ "filters": { "pluginFilters": { "apo": { "preset": "headphones/hd600" } } } }
+{ "filters": { "pluginFilters": { "apo": { "config": "Preamp: -6 dB\nFilter: ON PK Fc 100 Hz Gain 4 dB Q 1.41\nReverb: Mix 20 %" } } } }
+```
+
+| Command | Support |
+| --- | --- |
+| `Preamp` | Yes (several preamps add up in dB, as in APO) |
+| `Filter` | `PK`/`Modal`/`PEQ`, `LP`, `LPQ`, `HP`, `HPQ`, `BP`, `NO`, `AP`, `LS`/`LSC` and `HS`/`HSC` (with `Q`, `BW Oct` or an `x dB` slope), `LS`/`HS 6dB` and `12dB` (corner frequency), `IIR` (order ≤ 16). `OFF` filters are skipped. |
+| `GraphicEQ` | Yes: the curve (linear in log-frequency, flat outside the points) becomes a minimum-phase FIR, so it adds no latency |
+| `Channel` | `L`, `R`, `1`, `2`, `all` (other speakers don't exist in a stereo frame and are ignored) |
+| `Copy` | Yes, with factors, `dB` factors and constants; assignments on one line are evaluated together (`Copy: L=R R=L` swaps) |
+| `Delay` | `ms` or `samples`, up to 1 s |
+| `Include` | Files in the presets directory, relative to the including file (`\` or `/`), up to 8 levels |
+| `Convolution` | WAV, FLAC or Ogg impulse responses in the presets directory, resampled to 48 kHz if needed, up to 10 s; IR channels go to the selected channels round-robin, as in APO |
+| `Reverb` | **Wavyzon extension**: `Reverb: Mix 30 % Room 70 % Damping 50 %` (values in `%` or `0`–`1`, `Reverb: off`). The same Freeverb as the built-in `reverb` filter. APO ignores unknown commands, so files that use it still load in APO. |
+| `Device`, `Stage` | Ignored (warning): the filter applies to whatever the player plays |
+| `If`/`ElseIf`/`Else`/`EndIf`, `Eval`, inline `` `expressions` `` | Not evaluated: the block or line is skipped (warning) |
+
+**Presets** are the `.txt` files under `WAVYZON_PLUGIN_APO_DIR` (default
+`$WAVYZON_DATA_DIR/plugins/apo`), named by their path without `.txt`
+(`headphones/hd600`; lookups ignore case, as on Windows). The directory,
+its impulse responses and every preset are loaded and compiled at startup
+and on `POST /v1/plugins/apo/reload`, never while audio plays. Paths can't
+leave the directory and symbolic links are not followed.
+
+| Route | |
+| --- | --- |
+| `GET /v1/plugins/apo/` | Presets (stages, skipped lines, or why one can't be used), impulse responses, directory warnings |
+| `POST /v1/plugins/apo/reload` | Re-read the directory (new and edited files) |
+| `POST /v1/plugins/apo/check` | Compile `{"config": "..."}` or `{"preset": "..."}`: `200` with the stages and warnings, or `400` with the error |
+
+- A missing `Include`/`Convolution` file, a delay over 1 s or more than
+  512 filters fail the update with `400`. A malformed line of a known command
+  is skipped with a warning, as APO skips it.
+- Convolution runs in 20 ms partitions, aligned on the player's frames: no
+  added latency. All convolutions and GraphicEQs of one configuration are
+  limited to about 20 s of impulse response per channel. A heavy preset
+  (10 peaking filters, a GraphicEQ, a 3 s stereo IR and the reverb) costs
+  about 1 % of one core per playing deck.
+- Like other plugin filters, changing the configuration builds a new
+  instance and crossfades to it; boosts can clip, so add a `Preamp`.
+
 ## Volume
 
 `volume` is separate from filters: `0`–`1000`, `100` = unity. Values above

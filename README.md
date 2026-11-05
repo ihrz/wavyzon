@@ -89,6 +89,7 @@ team.
 - Add **sources**, **audio filters**, **event listeners** and **HTTP routes** in a few lines of Rust
 - Compiled in with a cargo feature, enabled with `WAVYZON_PLUGINS`, configured with `WAVYZON_PLUGIN_<NAME>_<KEY>`
 - A complete, tested [example plugin](plugins/wavyzon-plugin-example) (sine-tone source, bitcrush filter, event counter, stats route)
+- [Equalizer APO plugin](plugins/wavyzon-plugin-apo): play through APO configs and presets (parametric EQ, GraphicEQ, convolution, reverb) with `pluginFilters.apo`
 
 ### 🔁 **Operations**
 

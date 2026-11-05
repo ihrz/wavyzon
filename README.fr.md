@@ -90,6 +90,7 @@ le nœud audio en Go derrière *greed*, par l'équipe [iHorizon](https://gitlab.
 - Ajoutez des **sources**, des **filtres audio**, des **écouteurs d'événements** et des **routes HTTP** en quelques lignes de Rust
 - Compilés via une feature cargo, activés avec `WAVYZON_PLUGINS`, configurés avec `WAVYZON_PLUGIN_<NOM>_<CLÉ>`
 - Un [plugin d'exemple](plugins/wavyzon-plugin-example) complet et testé (source de sinusoïde, filtre bitcrush, compteur d'événements, route de statistiques)
+- [Plugin Equalizer APO](plugins/wavyzon-plugin-apo) : lecture à travers des configs et presets APO (EQ paramétrique, GraphicEQ, convolution, reverb) avec `pluginFilters.apo`
 
 ### 🔁 **Exploitation**
 

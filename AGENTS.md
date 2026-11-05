@@ -44,6 +44,10 @@ crates/
   wavyzon-plugin/     plugin API AND the shared model (Track, LoadResult, Failure, Event)
   wavyzon-testkit/    fake Discord voice gateway, mock sources, audio assertions
 plugins/wavyzon-plugin-example/   tone source, bitcrush filter, counter, route
+plugins/wavyzon-plugin-apo/       Equalizer APO configs as pluginFilters.apo: parser, RBJ biquads,
+                                  min-phase GraphicEQ, partitioned FFT convolution (960-sample
+                                  partitions = one frame, zero latency), Freeverb `Reverb:` extension,
+                                  presets dir loaded off the audio path
 docs/                 mdBook (docs/src/SUMMARY.md is the index)
 assets/               logo, banner, mono icon (+ assets/README.md brand guide)
 contrib/pelican/      Pelican/Pterodactyl egg: edit install.sh, icon.png or gen.py, then

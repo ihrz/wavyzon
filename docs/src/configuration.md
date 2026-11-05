@@ -101,8 +101,9 @@ mirrored to another playback source and a warning is logged at startup.
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `WAVYZON_PLUGINS` | all compiled in | Comma-separated plugin names to enable, in registration order (`example,lyrics`). **Empty enables every plugin compiled into the binary** (the default build compiles in `example`, cargo feature `plugin-example`). Naming a plugin that isn't compiled in stops the node at startup, and so does a plugin built for another `API_VERSION`. |
+| `WAVYZON_PLUGINS` | all compiled in | Comma-separated plugin names to enable, in registration order (`example,lyrics`). **Empty enables every plugin compiled into the binary** (the default build compiles in `example` and `apo`, cargo features `plugin-example` and `plugin-apo`). Naming a plugin that isn't compiled in stops the node at startup, and so does a plugin built for another `API_VERSION`. |
 | `WAVYZON_PLUGIN_<NAME>_<KEY>` | | Settings for one plugin. `<NAME>` is the plugin name upper-cased with `-` turned into `_`; the plugin receives `<key>` lower-cased. `WAVYZON_PLUGIN_EXAMPLE_AMPLITUDE=0.5` → `ctx.setting("amplitude") == Some("0.5")`. |
+| `WAVYZON_PLUGIN_APO_DIR` | `$WAVYZON_DATA_DIR/plugins/apo` | Presets directory of the [`apo` filter](filters.md#equalizer-apo-configurations-apo): Equalizer APO `.txt` files and their impulse responses. A path that isn't a directory stops the node at startup. |
 
 
 ## Example `.env`

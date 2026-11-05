@@ -102,7 +102,11 @@ async fn info_lists_plugins_sources_and_filters() {
         .iter()
         .map(|p| p["name"].as_str().unwrap())
         .collect();
-    assert_eq!(names, ["testkit", "example"]);
+    let mut want = vec!["testkit", "example"];
+    if cfg!(feature = "plugin-apo") {
+        want.push("apo");
+    }
+    assert_eq!(names, want);
     let (status, plugins) = call(Method::GET, &n.url("/v1/plugins"), None).await;
     assert_eq!(status, 200);
     assert_eq!(plugins, info["plugins"]);
@@ -262,6 +266,67 @@ async fn player_lifecycle_and_mix_conflicts() {
     )
     .await;
     assert_eq!(status, 404);
+    n.stop().await;
+}
+
+#[cfg(feature = "plugin-apo")]
+#[tokio::test]
+async fn apo_presets_routes_and_player_filter() {
+    let dir = std::sync::Arc::new(TempDir::new());
+    let presets = dir.0.join("data/plugins/apo");
+    std::fs::create_dir_all(&presets).unwrap();
+    std::fs::write(
+        presets.join("bass.txt"),
+        "Preamp: -4 dB\nFilter 1: ON LSC Fc 105 Hz Gain 4.0 dB Q 0.70\nReverb: Mix 20 %\n",
+    )
+    .unwrap();
+    std::fs::write(presets.join("broken.txt"), "Include: missing.txt").unwrap();
+    let n = start_in(dir, &[]).await;
+
+    let (status, list) = call(Method::GET, &n.url("/v1/plugins/apo/"), None).await;
+    assert_eq!(status, 200, "{list}");
+    assert_eq!(list["presets"][0]["name"], "bass");
+    assert_eq!(list["presets"][0]["stages"], json!(["preamp", "filter", "reverb"]));
+    assert!(list["presets"][1]["error"].as_str().unwrap().contains("missing.txt"));
+    let (status, v) = call(
+        Method::POST,
+        &n.url("/v1/plugins/apo/check"),
+        Some(json!({ "config": "GraphicEQ: 25 6; 16000 3\nStage: pre-mix" })),
+    )
+    .await;
+    assert_eq!(status, 200, "{v}");
+    assert_eq!(v["stages"], json!(["convolution"]));
+    assert_eq!(v["warnings"].as_array().unwrap().len(), 1);
+
+    let c = n.client("v1").await;
+    let base = n.url(&format!("/v1/sessions/{}/players/1", c.session_id()));
+    for filter in [
+        json!({ "preset": "bass" }),
+        json!({ "config": "Channel: L\nFilter: ON PK Fc 1000 Hz Gain -3 dB Q 1.41" }),
+    ] {
+        let (status, p) = call(
+            Method::PATCH,
+            &base,
+            Some(json!({ "filters": { "pluginFilters": { "apo": filter } } })),
+        )
+        .await;
+        assert_eq!(status, 200, "{p}");
+        assert_eq!(p["state"]["player"]["filters"]["pluginFilters"]["apo"], filter);
+    }
+    for (filter, why) in [
+        (json!({ "preset": "broken" }), "missing.txt"),
+        (json!({ "preset": "nope" }), "nope"),
+        (json!({ "config": "Delay: 9000 ms" }), "delay"),
+    ] {
+        let (status, e) = call(
+            Method::PATCH,
+            &base,
+            Some(json!({ "filters": { "pluginFilters": { "apo": filter } } })),
+        )
+        .await;
+        assert_eq!(status, 400, "{e}");
+        assert!(e.to_string().contains(why), "{e}");
+    }
     n.stop().await;
 }
 
@@ -610,11 +675,13 @@ async fn metrics_are_exposed() {
             .starts_with("text/plain")
     );
     let text = res.text().await.unwrap();
+    // testkit + example, + apo when compiled in
+    let plugins = format!("wavyzon_plugins {}", if cfg!(feature = "plugin-apo") { 3 } else { 2 });
     for needle in [
         "# TYPE wavyzon_players gauge",
         "wavyzon_players 1",
         "wavyzon_sessions 1",
-        "wavyzon_plugins 2",
+        plugins.as_str(),
         "wavyzon_events_total{type=\"TrackStartEvent\"} 1",
         "wavyzon_prefetch_total{outcome=\"hit\"}",
         "wavyzon_audio_cache_bytes",

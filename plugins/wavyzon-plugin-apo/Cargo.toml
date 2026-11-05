@@ -1,0 +1,26 @@
+[package]
+name = "wavyzon-plugin-apo"
+description = "Wavyzon plugin: Equalizer APO configuration files as a playback filter (EQ, GraphicEQ, convolution, reverb)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+wavyzon-plugin.workspace = true
+wavyzon-audio.workspace = true
+arc-swap.workspace = true
+parking_lot.workspace = true
+serde.workspace = true
+symphonia.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+# Partitioned FFT convolution (Convolution: and GraphicEQ:) and the
+# minimum-phase design of GraphicEQ.
+realfft = "3.5"
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }

@@ -13,10 +13,13 @@ default-run = "wavyzon"
 publish = false
 
 [features]
-default = ["plugin-example"]
+default = ["plugin-example", "plugin-apo"]
 ## The example plugin (`tone:` source, `bitcrush` filter, event counter and
 ## `/v1/plugins/example/` route).
 plugin-example = ["dep:wavyzon-plugin-example"]
+## Equalizer APO configurations as a playback filter (`pluginFilters.apo`,
+## `/v1/plugins/apo/` routes).
+plugin-apo = ["dep:wavyzon-plugin-apo"]
 
 [[bin]]
 name = "wavyzon"
@@ -34,6 +37,7 @@ wavyzon-voice.workspace = true
 wavyzon-sources.workspace = true
 wavyzon-player.workspace = true
 wavyzon-plugin-example = { path = "../../plugins/wavyzon-plugin-example", optional = true }
+wavyzon-plugin-apo = { path = "../../plugins/wavyzon-plugin-apo", optional = true }
 
 tokio.workspace = true
 tokio-util.workspace = true
