@@ -27,8 +27,8 @@ The install runs in `ghcr.io/pelican-eggs/installers:debian` (bookworm):
 1. installs `build-essential` and CMake (libopus is built from source and
    linked statically; DAVE is pure Rust, so there is **no libdave and no
    libopus** at runtime), then a minimal stable Rust toolchain with rustup;
-2. clones `WAVYZON_REPO` at `WAVYZON_REF` (default **`main`**; set `dev` to
-   follow the integration branch). The repository is public, so no token is
+2. clones `WAVYZON_REPO` at `WAVYZON_REF` (default **`main`**; a
+   release tag pins a version). The repository is public, so no token is
    needed. `WAVYZON_GIT_TOKEN` (admin-only) is only for a private fork: a
    project or personal access token with the `read_repository` scope, used as
    `https://oauth2:<token>@gitlab.com/…`. If the clone fails, the install stops

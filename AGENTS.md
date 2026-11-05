@@ -264,8 +264,10 @@ it automatically lands in the `mock` job.
 
 - `main` is the default branch; CI runs on MRs, `main` and tags (`v*` tags
   publish the Docker image).
-- **`dev`** is the integration branch: push finished work there (or open an MR
-  into it), never force-push and never push straight to `main` unless asked.
+- **Push finished work straight to `main`** (fast-forward, never force-push).
+  There is no `dev` branch any more: the maintainer removed it on purpose
+  (November 2026), don't recreate it. Short-lived feature branches or MRs are
+  fine when a change needs review.
 - History note: the codebase was first committed as one "import current
   Wavyzon working tree" commit (it had been developed untracked on top of the
   GitLab "Initial commit").
