@@ -46,8 +46,10 @@ crates/
 plugins/wavyzon-plugin-example/   tone source, bitcrush filter, counter, route
 docs/                 mdBook (docs/src/SUMMARY.md is the index)
 assets/               logo, banner, mono icon (+ assets/README.md brand guide)
-contrib/pelican/      Pelican/Pterodactyl egg: edit install.sh + gen.py, then regenerate
-                      egg-wavyzon.json (never edit the JSON by hand)
+contrib/pelican/      Pelican/Pterodactyl egg: edit install.sh, icon.png or gen.py, then
+                      regenerate egg-wavyzon.yaml + egg-pterodactyl-wavyzon.json (never by
+                      hand). Also submitted to pelican-eggs/software: stock images only,
+                      no start script (start command runs ./wavyzon directly)
 changelogs/en|fr/<version>/   archived release notes
 ```
 
