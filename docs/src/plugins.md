@@ -180,6 +180,7 @@ pub trait Source: Send + Sync + 'static {
     fn name(&self) -> &str;                                       // stored in Track::source
     fn search_prefix(&self) -> Option<&str> { None }              // "tone" → "tone:…" queries
     async fn search(&self, query: &str) -> Result<Vec<Track>, Failure> { Ok(vec![]) }
+    fn searches_text(&self) -> bool { true }                      // false: search only decodes ids
     fn matches_url(&self, url: &str) -> bool { false }            // claim links
     async fn load_url(&self, url: &str) -> Result<LoadResult, Failure>;
     async fn track(&self, identifier: &str) -> Result<Track, Failure>;   // required
@@ -197,6 +198,7 @@ How the node uses it:
 | `loadtracks?identifier=<url>` where `matches_url(url)` | `load_url(url)` → whatever `LoadResult` you return. Plugin sources are asked **before** built-in ones |
 | A player update with one of your tracks | `playable().open(track, start_ms)` |
 | Mirroring a Spotify/Apple/Deezer track, if your source is in `WAVYZON_PLAYBACK_SOURCES` | `isrc_lookup().by_isrc(isrc)` |
+| A text search another playback source found nothing for, if your source is in `WAVYZON_PLAYBACK_SOURCES` and `searches_text()` is `true` | `search(query)` as a fallback. Return `false` when your search only decodes an identifier (like `tone:440`): a song title would only fail there |
 
 ### Tracks
 
@@ -286,6 +288,8 @@ impl Source for ToneSource {
     async fn search(&self, query: &str) -> Result<Vec<Track>, Failure> {
         Ok(vec![ToneSpec::parse(query, &self.settings)?.to_track()])
     }
+    // A frequency, not a title: never used as a text-search fallback.
+    fn searches_text(&self) -> bool { false }
     fn matches_url(&self, url: &str) -> bool { url.starts_with("tone://") }
     async fn load_url(&self, url: &str) -> Result<LoadResult, Failure> {
         let rest = url.strip_prefix("tone://").unwrap_or(url);

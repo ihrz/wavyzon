@@ -157,6 +157,8 @@ impl Source for ToneSource {
     async fn search(&self, query: &str) -> Result<Vec<Track>, Failure> {
         Ok(vec![ToneSpec::parse(query, &self.settings)?.to_track()])
     }
+    // Une fréquence, pas un titre : jamais utilisée en repli d'une recherche texte.
+    fn searches_text(&self) -> bool { false }
     fn matches_url(&self, url: &str) -> bool { url.starts_with("tone://") }
     async fn load_url(&self, url: &str) -> Result<LoadResult, Failure> {
         let rest = url.strip_prefix("tone://").unwrap_or(url);

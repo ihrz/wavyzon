@@ -453,7 +453,14 @@ impl Sources {
         let res = s.search(query).await;
         let empty = res.as_ref().map(|t| t.is_empty()).unwrap_or(true);
         if empty && self.is_playback(&s) {
-            for fb in self.0.playback.iter().filter(|p| !Arc::ptr_eq(p, &s)) {
+            // Only sources that look up free text: a `tone` source decodes a
+            // frequency, a song title there is only an "invalid tone" warning.
+            for fb in self
+                .0
+                .playback
+                .iter()
+                .filter(|p| !Arc::ptr_eq(p, &s) && p.searches_text())
+            {
                 match fb.search(query).await {
                     Ok(found) if !found.is_empty() => {
                         inc(&self.0.metrics.fallback.search);
@@ -877,6 +884,7 @@ mod tests {
         body: &'static [u8],
         isrc_capable: bool,
         fail_search: bool,
+        no_text_search: bool,
     }
 
     #[async_trait]
@@ -886,6 +894,9 @@ mod tests {
         }
         fn search_prefix(&self) -> Option<&str> {
             Some(if self.name == "fake" { "fksearch" } else { "fbsearch" })
+        }
+        fn searches_text(&self) -> bool {
+            !self.no_text_search
         }
         async fn search(&self, _q: &str) -> Result<Vec<Track>, Failure> {
             self.searches.fetch_add(1, Ordering::SeqCst);
@@ -1142,6 +1153,29 @@ mod tests {
         assert_eq!(r.metrics().mirror.miss.load(Ordering::SeqCst), 1);
         r.playable(&t).await.unwrap_err();
         assert_eq!(primary.searches.load(Ordering::SeqCst), 1, "the miss was not cached");
+    }
+
+    /// A source whose search only decodes identifiers (`tone`) is never
+    /// asked to stand in for a text search: it would only fail.
+    #[tokio::test]
+    async fn fallback_skips_sources_that_do_not_search_text() {
+        let primary = audio(&[], vec![]);
+        let tone = Arc::new(FakeAudio {
+            name: "tn",
+            fail_search: true,
+            no_text_search: true,
+            ..Default::default()
+        });
+        let fb = Arc::new(FakeAudio {
+            name: "fb",
+            results: Mutex::new(vec![tr("fb", "9", "Rare Song", "Indie", 200_000)]),
+            body: b"fb",
+            ..Default::default()
+        });
+        let r = build(primary.clone(), vec![tone.clone(), fb.clone()], &[]);
+        let res = r.load("fksearch:rare song").await;
+        assert_eq!(res.tracks[0].source, "fb");
+        assert_eq!(tone.searches.load(Ordering::SeqCst), 0, "tone was asked a title");
     }
 
     #[tokio::test]

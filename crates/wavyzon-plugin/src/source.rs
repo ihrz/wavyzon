@@ -65,6 +65,14 @@ pub trait Source: Send + Sync + 'static {
         Ok(vec![])
     }
 
+    /// Whether [`search`](Source::search) answers free text. `false` for a
+    /// source whose search only decodes an identifier (`tone:440`): the
+    /// resolver then never asks it to stand in for a text search that
+    /// another source found nothing for.
+    fn searches_text(&self) -> bool {
+        true
+    }
+
     /// Whether this source handles `url`.
     fn matches_url(&self, _url: &str) -> bool {
         false

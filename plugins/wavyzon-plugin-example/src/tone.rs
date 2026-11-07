@@ -172,6 +172,12 @@ impl Source for ToneSource {
         Ok(vec![ToneSpec::parse(query, &self.settings)?.to_track()])
     }
 
+    /// `search` decodes a frequency, it does not look up titles: a song
+    /// name falling back here only gave "invalid tone" warnings.
+    fn searches_text(&self) -> bool {
+        false
+    }
+
     fn matches_url(&self, url: &str) -> bool {
         url.starts_with("tone://")
     }
