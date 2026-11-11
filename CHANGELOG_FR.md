@@ -26,6 +26,12 @@ La nouvelle crate `wavyzon-plugin` permet d'ajouter des **sources, des filtres a
 
 ---
 
+## 🗣️ Synthèse vocale Flowery
+
+Le nouveau plugin `flowery`, **activé par défaut**, fait parler le bot avec la synthèse vocale gratuite de [Flowery](https://flowery.pw). Il lit les identifiants `ftts://<texte>?voice=…&speed=…` de LavaSrc et annonce `ftts` et `flowery-tts` dans `/v4/info` : les recherches `source: "ftts"` de lavalink-client fonctionnent comme sur Lavalink avec LavaSrc. Aucune clé d'API ; `WAVYZON_PLUGIN_FLOWERY_ENABLED=false` le désactive.
+
+---
+
 ## 📚 Une meilleure documentation
 
 Un nouveau dossier `docs/` couvre la configuration, l'API, l'API de plugins et le déploiement, et la référence de l'API est publiée depuis `cargo doc` à chaque version.

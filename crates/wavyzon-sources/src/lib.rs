@@ -50,3 +50,6 @@ pub use config::{AppleMusicConfig, DeezerConfig, LocalConfig, SoundCloudConfig, 
 pub use http_source::HttpSourceConfig;
 pub use metrics::{Metrics, Sample};
 pub use resolver::{Sources, SourcesBuilder};
+/// Streaming-response helpers, shared with plugin sources that stream over
+/// [`httpx::HttpClient`] (`wavyzon-plugin-flowery`).
+pub use util::{Body, response_body};

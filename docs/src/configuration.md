@@ -101,9 +101,12 @@ mirrored to another playback source and a warning is logged at startup.
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `WAVYZON_PLUGINS` | all compiled in | Comma-separated plugin names to enable, in registration order (`example,lyrics`). **Empty enables every plugin compiled into the binary** (the default build compiles in `example` and `apo`, cargo features `plugin-example` and `plugin-apo`). Naming a plugin that isn't compiled in stops the node at startup, and so does a plugin built for another `API_VERSION`. |
+| `WAVYZON_PLUGINS` | all compiled in | Comma-separated plugin names to enable, in registration order (`example,lyrics`). **Empty enables every plugin compiled into the binary** (the default build compiles in `example`, `apo` and `flowery`, cargo features `plugin-example`, `plugin-apo` and `plugin-flowery`). Naming a plugin that isn't compiled in stops the node at startup, and so does a plugin built for another `API_VERSION`. |
 | `WAVYZON_PLUGIN_<NAME>_<KEY>` | | Settings for one plugin. `<NAME>` is the plugin name upper-cased with `-` turned into `_`; the plugin receives `<key>` lower-cased. `WAVYZON_PLUGIN_EXAMPLE_AMPLITUDE=0.5` → `ctx.setting("amplitude") == Some("0.5")`. |
 | `WAVYZON_PLUGIN_APO_DIR` | `$WAVYZON_DATA_DIR/plugins/apo` | Presets directory of the [`apo` filter](apo.md): Equalizer APO `.txt` files and their impulse responses. A path that isn't a directory stops the node at startup. |
+| `WAVYZON_PLUGIN_FLOWERY_ENABLED` | `true` | The [Flowery TTS](flowery-tts.md) source (`ftts://`). `false` registers no source; leaving `flowery` out of `WAVYZON_PLUGINS` does not load the plugin at all. |
+| `WAVYZON_PLUGIN_FLOWERY_VOICE`, `_TRANSLATE`, `_SILENCE`, `_SPEED`, `_AUDIO_FORMAT` | Flowery's voice, `false`, `0`, `1.0`, `mp3` | Defaults for the options an `ftts://` identifier does not give ([table](flowery-tts.md#settings)). Out-of-range values stop the node at startup. |
+| `WAVYZON_PLUGIN_FLOWERY_API_URL`, `_TIMEOUT_MS`, `_PROXY` | `https://api.flowery.pw/v1/tts`, `30000`, none | Flowery endpoint, wait for its answer, optional proxy. |
 
 
 ## Example `.env`

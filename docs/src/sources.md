@@ -16,6 +16,7 @@ opens an audio stream for them. Wavyzon has two kinds:
 | **Local files** | `local` | | `local:` paths under `WAVYZON_LOCAL_ROOT` | ✅ (opt-in) |
 | **Spotify** | `spotify` | `spsearch:` | tracks, albums, playlists, artists, `spotify:` URIs, short links | mirrored |
 | **Apple Music** | `applemusic` | `amsearch:` | songs, albums, playlists, artists | mirrored |
+| **Flowery TTS** (plugin, on by default) | `flowery-tts` (also listed as `ftts`) | | `ftts://<text>` ([details](flowery-tts.md)) | ✅ |
 | **Plugins** | plugin-defined | plugin-defined | plugin-defined | if the plugin implements `Playable` |
 
 Plain-text queries (no prefix, not a URL) search the sources in
@@ -175,5 +176,8 @@ GET /v1/loadtracks?identifier=tone:440:30
 ```json
 { "loadType": "search", "data": [ { "encoded": "eyJzb3…", "info": { "source": "tone", "identifier": "440:30", "title": "Sine 440 Hz", "author": "wavyzon-plugin-example", "durationMs": 30000, "uri": "tone://440:30" } } ] }
 ```
+
+The bundled `flowery` plugin is a complete source of this kind: it claims
+`ftts://` identifiers and streams [Flowery TTS](flowery-tts.md).
 
 See [Writing plugins](plugins.md#2-sources).

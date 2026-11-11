@@ -90,6 +90,7 @@ team.
 - Compiled in with a cargo feature, enabled with `WAVYZON_PLUGINS`, configured with `WAVYZON_PLUGIN_<NAME>_<KEY>`
 - A complete, tested [example plugin](plugins/wavyzon-plugin-example) (sine-tone source, bitcrush filter, event counter, stats route)
 - [Equalizer APO plugin](plugins/wavyzon-plugin-apo): play through APO configs and presets (parametric EQ, GraphicEQ, convolution, reverb) with `pluginFilters.apo`
+- [Flowery TTS plugin](plugins/wavyzon-plugin-flowery): text-to-speech with LavaSrc's `ftts://` identifiers, so lavalink-client's `source: "ftts"` works (on by default, no API key)
 
 ### 🔁 **Operations**
 

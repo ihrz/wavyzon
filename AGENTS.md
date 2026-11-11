@@ -48,6 +48,9 @@ plugins/wavyzon-plugin-apo/       Equalizer APO configs as pluginFilters.apo: pa
                                   min-phase GraphicEQ, partitioned FFT convolution (960-sample
                                   partitions = one frame, zero latency), Freeverb `Reverb:` extension,
                                   presets dir loaded off the audio path
+plugins/wavyzon-plugin-flowery/   Flowery TTS source (on by default): LavaSrc's ftts://<text>?voice=…
+                                  identifiers, registered as flowery-tts + ftts (lavalink-client checks
+                                  sourceManagers), streams /v1/tts through wavyzon-sources' HttpClient
 docs/                 mdBook (docs/src/SUMMARY.md is the index)
 assets/               logo, banner, mono icon (+ assets/README.md brand guide)
 contrib/pelican/      Pelican/Pterodactyl egg: edit install.sh, icon.png or gen.py, then

@@ -23,6 +23,7 @@
 - [Filters](filters.md)
   - [Equalizer APO](apo.md)
 - [Sources](sources.md)
+  - [Flowery TTS](flowery-tts.md)
 
 # Extending Wavyzon
 

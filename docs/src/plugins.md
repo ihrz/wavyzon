@@ -14,6 +14,14 @@ and implements one trait, `Plugin`. It can add:
 The complete, tested example used throughout this page lives in
 [`plugins/wavyzon-plugin-example`](https://gitlab.com/ihrz/wavyzon/-/tree/main/plugins/wavyzon-plugin-example).
 
+Two real plugins ship with the node and are on by default, each also a
+model to copy:
+
+| Plugin | Adds | Docs |
+| --- | --- | --- |
+| [`apo`](https://gitlab.com/ihrz/wavyzon/-/tree/main/plugins/wavyzon-plugin-apo) | a filter (`pluginFilters.apo`) and routes | [Equalizer APO](apo.md) |
+| [`flowery`](https://gitlab.com/ihrz/wavyzon/-/tree/main/plugins/wavyzon-plugin-flowery) | a playable source for `ftts://` links, streamed with `wavyzon-sources`' shared `HttpClient` | [Flowery TTS](flowery-tts.md) |
+
 ## How plugins are loaded
 
 Plugins are **compiled in**, not loaded from shared libraries at runtime:

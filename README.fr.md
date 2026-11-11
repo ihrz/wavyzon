@@ -91,6 +91,7 @@ le nœud audio en Go derrière *greed*, par l'équipe [iHorizon](https://gitlab.
 - Compilés via une feature cargo, activés avec `WAVYZON_PLUGINS`, configurés avec `WAVYZON_PLUGIN_<NOM>_<CLÉ>`
 - Un [plugin d'exemple](plugins/wavyzon-plugin-example) complet et testé (source de sinusoïde, filtre bitcrush, compteur d'événements, route de statistiques)
 - [Plugin Equalizer APO](plugins/wavyzon-plugin-apo) : lecture à travers des configs et presets APO (EQ paramétrique, GraphicEQ, convolution, reverb) avec `pluginFilters.apo`
+- [Plugin Flowery TTS](plugins/wavyzon-plugin-flowery) : synthèse vocale avec les identifiants `ftts://` de LavaSrc, pour que `source: "ftts"` de lavalink-client fonctionne (activé par défaut, sans clé d'API)
 
 ### 🔁 **Exploitation**
 

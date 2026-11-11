@@ -106,6 +106,9 @@ async fn info_lists_plugins_sources_and_filters() {
     if cfg!(feature = "plugin-apo") {
         want.push("apo");
     }
+    if cfg!(feature = "plugin-flowery") {
+        want.push("flowery");
+    }
     assert_eq!(names, want);
     let (status, plugins) = call(Method::GET, &n.url("/v1/plugins"), None).await;
     assert_eq!(status, 200);
@@ -453,6 +456,79 @@ async fn resume_with_another_user_creates_a_new_session() {
 
 // ----- Lavalink v4 -----------------------------------------------------------
 
+/// What lavalink-client checks before an `ftts` search, then the load
+/// itself (no network: loading builds the track, and prefetch is off).
+#[cfg(feature = "plugin-flowery")]
+#[tokio::test]
+async fn v4_flowery_tts_is_advertised_and_loads() {
+    let n = start(&[("WAVYZON_PREFETCH_ON_LOAD", "false")]).await;
+    let (_, info) = call(Method::GET, &n.url("/v4/info"), None).await;
+    let managers = info["sourceManagers"].as_array().unwrap();
+    assert!(
+        managers.contains(&json!("ftts")) && managers.contains(&json!("flowery-tts")),
+        "{managers:?}"
+    );
+    assert!(
+        info["plugins"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|p| p["name"] == "flowery")
+    );
+
+    // lavalink-client: `ftts://` + encodeURIComponent(text) + `?voice=…`
+    let id = "ftts://Hello%20world%21?voice=fa3ea565-121f-5efd-b4e9-59895c77df23";
+    let url = reqwest::Url::parse_with_params(&n.url("/v4/loadtracks"), [("identifier", id)]).unwrap();
+    let (status, body) = call(Method::GET, url.as_str(), None).await;
+    assert_eq!(status, 200);
+    assert_eq!(body["loadType"], "track", "{body}");
+    let info = &body["data"]["info"];
+    assert_eq!(info["sourceName"], "flowery-tts");
+    assert_eq!(info["title"], "Hello world!");
+    assert_eq!(info["author"], "Flowery TTS");
+    assert_eq!(info["isStream"], false);
+    assert_eq!(info["identifier"], id);
+    assert!(
+        info["uri"]
+            .as_str()
+            .unwrap()
+            .starts_with("https://api.flowery.pw/v1/tts?text=Hello+world%21&voice=fa3ea565"),
+        "{info}"
+    );
+    let encoded = body["data"]["encoded"].as_str().unwrap();
+    let (_, decoded) = call(
+        Method::GET,
+        &n.url(&format!("/v4/decodetrack?encodedTrack={encoded}")),
+        None,
+    )
+    .await;
+    assert_eq!(decoded["info"]["identifier"], id);
+
+    for (bad, kind) in [("ftts://x?speed=fast", "error"), ("ftts://", "empty")] {
+        let url = reqwest::Url::parse_with_params(&n.url("/v4/loadtracks"), [("identifier", bad)]).unwrap();
+        let (_, body) = call(Method::GET, url.as_str(), None).await;
+        assert_eq!(body["loadType"], kind, "{bad}: {body}");
+    }
+    n.stop().await;
+
+    // disabled the usual way: a WAVYZON_PLUGINS list without it
+    let n = start(&[("WAVYZON_PLUGINS", "testkit,example")]).await;
+    let (_, info) = call(Method::GET, &n.url("/v4/info"), None).await;
+    let managers = info["sourceManagers"].as_array().unwrap();
+    assert!(
+        !managers.contains(&json!("ftts")) && !managers.contains(&json!("flowery-tts")),
+        "{managers:?}"
+    );
+    assert!(
+        !info["plugins"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|p| p["name"] == "flowery")
+    );
+    n.stop().await;
+}
+
 #[tokio::test]
 async fn v4_info_and_version_match_lavalink() {
     let n = start(&[]).await;
@@ -675,8 +751,9 @@ async fn metrics_are_exposed() {
             .starts_with("text/plain")
     );
     let text = res.text().await.unwrap();
-    // testkit + example, + apo when compiled in
-    let plugins = format!("wavyzon_plugins {}", if cfg!(feature = "plugin-apo") { 3 } else { 2 });
+    // testkit + example, + apo and flowery when compiled in
+    let count = 2 + usize::from(cfg!(feature = "plugin-apo")) + usize::from(cfg!(feature = "plugin-flowery"));
+    let plugins = format!("wavyzon_plugins {count}");
     for needle in [
         "# TYPE wavyzon_players gauge",
         "wavyzon_players 1",

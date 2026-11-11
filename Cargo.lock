@@ -3302,6 +3302,7 @@ dependencies = [
  "wavyzon-plugin",
  "wavyzon-plugin-apo",
  "wavyzon-plugin-example",
+ "wavyzon-plugin-flowery",
  "wavyzon-sources",
  "wavyzon-testkit",
  "wavyzon-voice",
@@ -3386,6 +3387,17 @@ dependencies = [
  "tokio",
  "tracing",
  "wavyzon-plugin",
+]
+
+[[package]]
+name = "wavyzon-plugin-flowery"
+version = "0.1.0"
+dependencies = [
+ "tokio",
+ "tracing",
+ "url",
+ "wavyzon-plugin",
+ "wavyzon-sources",
 ]
 
 [[package]]

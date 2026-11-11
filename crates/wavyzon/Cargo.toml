@@ -13,13 +13,16 @@ default-run = "wavyzon"
 publish = false
 
 [features]
-default = ["plugin-example", "plugin-apo"]
+default = ["plugin-example", "plugin-apo", "plugin-flowery"]
 ## The example plugin (`tone:` source, `bitcrush` filter, event counter and
 ## `/v1/plugins/example/` route).
 plugin-example = ["dep:wavyzon-plugin-example"]
 ## Equalizer APO configurations as a playback filter (`pluginFilters.apo`,
 ## `/v1/plugins/apo/` routes).
 plugin-apo = ["dep:wavyzon-plugin-apo"]
+## Flowery text-to-speech as a source (`ftts://` identifiers, LavaSrc-compatible;
+## `ftts` and `flowery-tts` in `/v4/info` `sourceManagers`).
+plugin-flowery = ["dep:wavyzon-plugin-flowery"]
 
 [[bin]]
 name = "wavyzon"
@@ -38,6 +41,7 @@ wavyzon-sources.workspace = true
 wavyzon-player.workspace = true
 wavyzon-plugin-example = { path = "../../plugins/wavyzon-plugin-example", optional = true }
 wavyzon-plugin-apo = { path = "../../plugins/wavyzon-plugin-apo", optional = true }
+wavyzon-plugin-flowery = { path = "../../plugins/wavyzon-plugin-flowery", optional = true }
 
 tokio.workspace = true
 tokio-util.workspace = true

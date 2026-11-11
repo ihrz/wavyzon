@@ -26,6 +26,12 @@ The new `wavyzon-plugin` crate lets you add **sources, audio filters, event list
 
 ---
 
+## 🗣️ Flowery text-to-speech
+
+The new `flowery` plugin, **on by default**, makes the bot speak with [Flowery](https://flowery.pw)'s free TTS. It reads LavaSrc's `ftts://<text>?voice=…&speed=…` identifiers and lists `ftts` and `flowery-tts` in `/v4/info`, so lavalink-client's `source: "ftts"` searches work as on Lavalink with LavaSrc. No API key is needed; `WAVYZON_PLUGIN_FLOWERY_ENABLED=false` turns it off.
+
+---
+
 ## 📚 Better documentation
 
 A new `docs/` folder covers configuration, the API, the plugin API and deployment, and the API reference is published from `cargo doc` with every release.

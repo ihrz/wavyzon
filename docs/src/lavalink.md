@@ -19,6 +19,7 @@ changes beyond the node address and password.
 | Standard filters | ✅ `equalizer`, `timescale`, `karaoke`, `lowPass`, `tremolo`, `vibrato`, `rotation`, plus `reverb` |
 | `pluginFilters` | ✅ routed to [plugin filters](filters.md#plugin-filters) |
 | LavaLyrics `GET /v4/lyrics`, `GET …/players/{guild}/track/lyrics` | ✅ plain lyrics from lyrics.ovh (no timed lines); `lavalyrics-plugin` is listed in `/v4/info` `plugins` |
+| LavaSrc's Flowery TTS (`ftts://…`) | ✅ [`flowery` plugin](flowery-tts.md), on by default; `ftts` and `flowery-tts` are listed in `sourceManagers` |
 | `/v4/routeplanner/*` | ❌ (no IP rotation) |
 | `channelMix`, `distortion` filters | ❌ not listed in `/v4/info` `filters`; ignored |
 | Lavalink (JVM) plugins | ❌ Wavyzon has its [own plugin API](plugins.md) |
