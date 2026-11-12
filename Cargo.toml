@@ -4,7 +4,7 @@ members = ["crates/*", "plugins/*"]
 default-members = ["crates/*"]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 rust-version = "1.85"
 license = "CC-BY-NC-SA-4.0"
@@ -14,12 +14,12 @@ homepage = "https://gitlab.com/ihrz/wavyzon"
 
 [workspace.dependencies]
 # internal crates
-wavyzon-plugin = { path = "crates/wavyzon-plugin", version = "0.1.0" }
-wavyzon-audio = { path = "crates/wavyzon-audio", version = "0.1.0" }
-wavyzon-analysis = { path = "crates/wavyzon-analysis", version = "0.1.0" }
-wavyzon-voice = { path = "crates/wavyzon-voice", version = "0.1.0" }
-wavyzon-sources = { path = "crates/wavyzon-sources", version = "0.1.0" }
-wavyzon-player = { path = "crates/wavyzon-player", version = "0.1.0" }
+wavyzon-plugin = { path = "crates/wavyzon-plugin", version = "0.2.0" }
+wavyzon-audio = { path = "crates/wavyzon-audio", version = "0.2.0" }
+wavyzon-analysis = { path = "crates/wavyzon-analysis", version = "0.2.0" }
+wavyzon-voice = { path = "crates/wavyzon-voice", version = "0.2.0" }
+wavyzon-sources = { path = "crates/wavyzon-sources", version = "0.2.0" }
+wavyzon-player = { path = "crates/wavyzon-player", version = "0.2.0" }
 
 # runtime
 tokio = { version = "1.54", features = ["full"] }

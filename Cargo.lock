@@ -3278,7 +3278,7 @@ dependencies = [
 
 [[package]]
 name = "wavyzon"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "axum",
@@ -3311,7 +3311,7 @@ dependencies = [
 
 [[package]]
 name = "wavyzon-analysis"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "futures",
  "parking_lot 0.12.5",
@@ -3326,7 +3326,7 @@ dependencies = [
 
 [[package]]
 name = "wavyzon-audio"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "audiopus",
  "serde",
@@ -3338,7 +3338,7 @@ dependencies = [
 
 [[package]]
 name = "wavyzon-player"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
@@ -3355,7 +3355,7 @@ dependencies = [
 
 [[package]]
 name = "wavyzon-plugin"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "async-trait",
  "axum",
@@ -3368,7 +3368,7 @@ dependencies = [
 
 [[package]]
 name = "wavyzon-plugin-apo"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "arc-swap",
  "parking_lot 0.12.5",
@@ -3383,7 +3383,7 @@ dependencies = [
 
 [[package]]
 name = "wavyzon-plugin-example"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "tokio",
  "tracing",
@@ -3392,7 +3392,7 @@ dependencies = [
 
 [[package]]
 name = "wavyzon-plugin-flowery"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "tokio",
  "tracing",
@@ -3403,7 +3403,7 @@ dependencies = [
 
 [[package]]
 name = "wavyzon-plugin-genius"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "reqwest",
  "serde",
@@ -3417,7 +3417,7 @@ dependencies = [
 
 [[package]]
 name = "wavyzon-sources"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "async-trait",
  "axum",
@@ -3444,7 +3444,7 @@ dependencies = [
 
 [[package]]
 name = "wavyzon-testkit"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "aes-gcm",
  "async-trait",
@@ -3464,7 +3464,7 @@ dependencies = [
 
 [[package]]
 name = "wavyzon-voice"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "aes-gcm",
  "chacha20poly1305",

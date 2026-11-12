@@ -85,13 +85,13 @@ What the node can do.
 
 ```json
 {
-  "version": "0.1.0",
+  "version": "0.2.0",
   "sources": ["deezer", "spotify", "applemusic", "soundcloud", "http", "local", "tone"],
   "dave": true,
   "filters": ["equalizer", "timescale", "tremolo", "vibrato", "rotation", "lowPass", "karaoke", "reverb"],
   "pluginFilters": ["bitcrush"],
   "plugins": [
-    { "name": "example", "version": "0.1.0", "description": "Sine-tone source, bitcrush filter, event counter and stats route", "apiVersion": 1 }
+    { "name": "example", "version": "0.2.0", "description": "Sine-tone source, bitcrush filter, event counter and stats route", "apiVersion": 1 }
   ],
   "mixing": true,
   "analysis": 3,
@@ -147,7 +147,7 @@ Loaded plugins, in registration order.
 
 ```json
 [
-  { "name": "example", "version": "0.1.0", "description": "Sine-tone source, bitcrush filter, event counter and stats route", "apiVersion": 1 }
+  { "name": "example", "version": "0.2.0", "description": "Sine-tone source, bitcrush filter, event counter and stats route", "apiVersion": 1 }
 ]
 ```
 
@@ -167,7 +167,7 @@ GET /v1/plugins/example/
 ```json
 {
   "plugin": "example",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "events": { "PositionEvent": 1, "TrackAudibleEvent": 4, "TrackEndEvent": 3, "TrackStartEvent": 4 },
   "totalEvents": 12,
   "sessions": 1,

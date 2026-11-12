@@ -1,28 +1,24 @@
-# Version 0.1.0 (first release — the Rust rewrite)
+# Version 0.2.0 (Deezer streaming, crossfades, lyrics and three new plugins)
 
 ---
 
-## 🦀 A Rust rewrite of Cadence
+## 🎧 Deezer streams again
 
-Wavyzon is a full rewrite of [Cadence](https://github.com/relateful/Cadence), the Go audio node, in **Rust**. It keeps what made Cadence good — **two-deck mixing** with real crossfades, the **frame-accurate wire clock** behind `TrackAudibleEvent` and synced lyrics, and **DAVE end-to-end encryption** for Discord voice — and stays a **drop-in Lavalink v4 node**: point your existing client at it and it plays.
+Deezer is back as a **playback source**: log in with one or more account cookies (`DEEZER_ARL`, with `failover`, `round-robin` or `random` rotation) and `DEEZER_MASTER_KEY`, and Wavyzon streams and decrypts Deezer tracks itself, with **instant seeks** on constant-bitrate files. Without them, Deezer stays metadata-only and its tracks are matched to another playback source, as in 0.1.0. Recommendations use the logged-in track mix again.
 
----
-
-## 🔐 DAVE without libdave
-
-Voice encryption, including DAVE, is now **pure Rust**. There is no native library to download or link anymore, and libopus is built and linked statically: the result is a **single self-contained binary**.
+> **Changed defaults**: `WAVYZON_PLAYBACK_SOURCES` is now `deezer,soundcloud` and `WAVYZON_SEARCH_ORDER` starts with `deezer`. Set them back to `soundcloud` to keep 0.1.0's behaviour.
 
 ---
 
-## 🌐 A new HTTP audio source
+## 🔀 Automatic crossfades
 
-Play **direct audio URLs** and **Icecast / Shoutcast radio streams** out of the box. Private and local network addresses are refused by default (`WAVYZON_HTTP_ALLOW_PRIVATE=false`), so a node exposed to clients cannot be turned against your own network.
+When the bot queues a `nextTrack`, the current track now **fades into it** `WAVYZON_CROSSFADE_MS` before its end (default 3 s, equal-power) instead of cutting over on the last frame. Bots see the same events as a gapless swap. `0` keeps strict gapless playback.
 
 ---
 
-## 🧩 A plugin API
+## 🎤 Lyrics: Genius, then lyrics.ovh
 
-The new `wavyzon-plugin` crate lets you add **sources, audio filters, event listeners and REST routes** without forking Wavyzon. Plugins are enabled with `WAVYZON_PLUGINS` and configured with `WAVYZON_PLUGIN_<NAME>_<KEY>` variables. An example plugin ships in `plugins/`.
+`/v1/lyrics` and `/v4/lyrics` serve plain lyrics in the shape of Lavalink's **LavaLyrics** plugin, and `/v4/info` lists `lavalyrics-plugin`. The new `genius` plugin, **on by default**, asks [Genius](https://genius.com) first; when Genius has none or fails, lyrics.ovh answers (Genius off: lyrics.ovh directly). Set `WAVYZON_PLUGIN_GENIUS_ACCESS_TOKEN` (or `_CLIENT_ID` + `_CLIENT_SECRET`) for reliable searches; the `provider` field says which one answered. `livecheck -lyrics "<artist> - <title>"` checks the chain live.
 
 ---
 
@@ -32,38 +28,33 @@ The new `flowery` plugin, **on by default**, makes the bot speak with [Flowery](
 
 ---
 
-## 📚 Better documentation
+## 🎚️ Equalizer APO configurations
 
-A new `docs/` folder covers configuration, the API, the plugin API and deployment, and the API reference is published from `cargo doc` with every release.
-
----
-
-## 🔌 API
-
-- The `/v1` API, the Lavalink v4 layer and the WebSocket events are Cadence's. New: `GET /v1/plugins`, plugin routes under `/v1/plugins/<name>`, `plugins` and `pluginFilters` in `/v1/info`, and `track.identifier` in player updates.
-- v4 extra events are switched on with `wavyzonEvents` (Cadence's `cadenceEvents` still works).
-- Logs are JSON by default; `WAVYZON_LOG_FORMAT=pretty` for terminals, and `RUST_LOG` for per-crate filters.
-- `livecheck` checks search, mirroring, streaming and seeking against the live sources you configured.
+The new `apo` plugin, **on by default**, plays through **Equalizer APO** configs and presets with `filters.pluginFilters.apo`: parametric filters, GraphicEQ, convolution with impulse responses (zero added latency) and a reverb extension. Presets live in a directory and reload without a restart.
 
 ---
 
-## 🎵 Sources
+## 🧩 Plugin API
 
-- **SoundCloud** is the default playback source (`WAVYZON_PLAYBACK_SOURCES`); **HTTP** links and **local** files play directly.
-- **Deezer, Spotify and Apple Music** are used for **metadata and search** only; matching tracks are played from a playback source. The Deezer streaming options (`DEEZER_ARL`, `DEEZER_MASTER_KEY`, ...) are gone.
-
----
-
-## 🐳 Deployment
-
-- A new multi-stage **Docker image** running as an unprivileged user, with a `docker-compose.yml` to get started.
-- Every Cadence setting was renamed from `CADENCE_*` to `WAVYZON_*`. See `.env.example`.
+Plugins can now add **lyrics providers** (`Registry::lyrics`), asked before lyrics.ovh, on top of sources, filters, event listeners and routes. The change is additive: `API_VERSION` stays `1`.
 
 ---
 
-## ⚖️ License
+## 🛠️ Fixes
 
-Wavyzon is released under **CC BY-NC-SA 4.0**, like the rest of the iHorizon projects. Cadence's MIT notice is kept in `NOTICE`.
+- A stream that breaks mid-track is **reopened where it stopped** instead of ending the track.
+- SoundCloud plays its **HLS AAC** streams, never the adaptive playlist.
+- Mirroring no longer picks **unrelated uploads or remixes**, and a tone-like source is never used as a text-search fallback.
+- A `noReplace` play never seeks the track a crossfade started.
+- Per-attempt header timeouts, a server header-read timeout, and several Cadence parity gaps closed after a module-by-module audit.
+
+---
+
+## 🐳 Deployment and docs
+
+- A **Pelican / Pterodactyl egg** (`contrib/pelican/`), built in pelican-eggs' stock images with no start script, exposing every setting as a panel variable.
+- A documentation site (mdBook) at **wavyzon.ihorizon.org/docs/**, with a quick start, examples, a Pelican guide and the API reference.
+- A new logo and brand assets.
 
 ---
 

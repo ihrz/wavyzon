@@ -1,28 +1,24 @@
-# Version 0.1.0 (première version — la réécriture en Rust)
+# Version 0.2.0 (lecture Deezer, fondus enchaînés, paroles et trois nouveaux plugins)
 
 ---
 
-## 🦀 Une réécriture de Cadence en Rust
+## 🎧 Deezer joue de nouveau
 
-Wavyzon est une réécriture complète de [Cadence](https://github.com/relateful/Cadence), le nœud audio en Go, en **Rust**. Il garde ce qui faisait la force de Cadence — le **mixage à deux platines** avec de vrais cross-fades, l'**horloge de transmission précise à la trame** derrière `TrackAudibleEvent` et les paroles synchronisées, et le **chiffrement de bout en bout DAVE** pour la voix Discord — et reste un **nœud Lavalink v4 compatible** : pointez votre client existant dessus et la musique démarre.
+Deezer redevient une **source de lecture** : connectez un ou plusieurs cookies de compte (`DEEZER_ARL`, rotation `failover`, `round-robin` ou `random`) et `DEEZER_MASTER_KEY`, et Wavyzon lit et déchiffre lui-même les pistes Deezer, avec des **sauts instantanés** sur les fichiers à débit constant. Sans eux, Deezer reste limité aux métadonnées et ses pistes sont jouées depuis une autre source de lecture, comme en 0.1.0. Les recommandations utilisent de nouveau le mix du compte connecté.
 
----
-
-## 🔐 DAVE sans libdave
-
-Le chiffrement de la voix, DAVE compris, est désormais **100 % Rust**. Plus aucune bibliothèque native à télécharger ou à lier, et libopus est compilée et liée statiquement : on obtient **un seul binaire autonome**.
+> **Valeurs par défaut modifiées** : `WAVYZON_PLAYBACK_SOURCES` vaut désormais `deezer,soundcloud` et `WAVYZON_SEARCH_ORDER` commence par `deezer`. Remettez `soundcloud` pour garder le comportement de la 0.1.0.
 
 ---
 
-## 🌐 Une nouvelle source audio HTTP
+## 🔀 Fondus enchaînés automatiques
 
-Lisez des **URL audio directes** et des **flux radio Icecast / Shoutcast** sans rien installer. Les adresses de réseaux privés et locaux sont refusées par défaut (`WAVYZON_HTTP_ALLOW_PRIVATE=false`), pour qu'un nœud ouvert à des clients ne puisse pas être retourné contre votre propre réseau.
+Quand le bot met en file un `nextTrack`, la piste en cours **se fond dans la suivante** `WAVYZON_CROSSFADE_MS` avant sa fin (3 s par défaut, à puissance constante) au lieu de basculer sur la dernière trame. Le bot reçoit les mêmes événements qu'un enchaînement sans blanc. `0` garde l'enchaînement strict sans blanc.
 
 ---
 
-## 🧩 Une API de plugins
+## 🎤 Paroles : Genius, puis lyrics.ovh
 
-La nouvelle crate `wavyzon-plugin` permet d'ajouter des **sources, des filtres audio, des écouteurs d'événements et des routes REST** sans forker Wavyzon. Les plugins s'activent avec `WAVYZON_PLUGINS` et se configurent avec des variables `WAVYZON_PLUGIN_<NOM>_<CLÉ>`. Un plugin d'exemple est fourni dans `plugins/`.
+`/v1/lyrics` et `/v4/lyrics` servent les paroles au format du plugin **LavaLyrics** de Lavalink, et `/v4/info` annonce `lavalyrics-plugin`. Le nouveau plugin `genius`, **activé par défaut**, interroge d'abord [Genius](https://genius.com) ; quand Genius n'en a pas ou échoue, lyrics.ovh répond (Genius désactivé : lyrics.ovh directement). Renseignez `WAVYZON_PLUGIN_GENIUS_ACCESS_TOKEN` (ou `_CLIENT_ID` + `_CLIENT_SECRET`) pour des recherches fiables ; le champ `provider` indique qui a répondu. `livecheck -lyrics "<artiste> - <titre>"` vérifie la chaîne en direct.
 
 ---
 
@@ -32,38 +28,33 @@ Le nouveau plugin `flowery`, **activé par défaut**, fait parler le bot avec la
 
 ---
 
-## 📚 Une meilleure documentation
+## 🎚️ Configurations Equalizer APO
 
-Un nouveau dossier `docs/` couvre la configuration, l'API, l'API de plugins et le déploiement, et la référence de l'API est publiée depuis `cargo doc` à chaque version.
-
----
-
-## 🔌 API
-
-- L'API `/v1`, la couche Lavalink v4 et les événements WebSocket sont ceux de Cadence. Nouveau : `GET /v1/plugins`, les routes des plugins sous `/v1/plugins/<nom>`, `plugins` et `pluginFilters` dans `/v1/info`, et `track.identifier` dans les mises à jour de lecteur.
-- Les événements supplémentaires en v4 s'activent avec `wavyzonEvents` (le `cadenceEvents` de Cadence fonctionne toujours).
-- Les journaux sont en JSON par défaut ; `WAVYZON_LOG_FORMAT=pretty` pour un terminal, et `RUST_LOG` pour filtrer par crate.
-- `livecheck` vérifie la recherche, le miroir, la lecture et les sauts contre les sources réelles que vous avez configurées.
+Le nouveau plugin `apo`, **activé par défaut**, fait passer la lecture par des configs et presets **Equalizer APO** avec `filters.pluginFilters.apo` : filtres paramétriques, GraphicEQ, convolution avec réponses impulsionnelles (sans latence ajoutée) et une extension de réverbération. Les presets vivent dans un dossier et se rechargent sans redémarrage.
 
 ---
 
-## 🎵 Sources
+## 🧩 API de plugins
 
-- **SoundCloud** est la source de lecture par défaut (`WAVYZON_PLAYBACK_SOURCES`) ; les liens **HTTP** et les fichiers **locaux** se lisent directement.
-- **Deezer, Spotify et Apple Music** servent uniquement aux **métadonnées et à la recherche** ; les titres trouvés sont lus depuis une source de lecture. Les options de streaming Deezer (`DEEZER_ARL`, `DEEZER_MASTER_KEY`, ...) disparaissent.
-
----
-
-## 🐳 Déploiement
-
-- Une nouvelle **image Docker** multi-étapes qui tourne avec un utilisateur non privilégié, et un `docker-compose.yml` pour démarrer.
-- Tous les réglages de Cadence passent de `CADENCE_*` à `WAVYZON_*`. Voir `.env.example`.
+Les plugins peuvent désormais ajouter des **fournisseurs de paroles** (`Registry::lyrics`), interrogés avant lyrics.ovh, en plus des sources, filtres, écouteurs d'événements et routes. Le changement est purement additif : `API_VERSION` reste `1`.
 
 ---
 
-## ⚖️ Licence
+## 🛠️ Corrections
 
-Wavyzon est publié sous **CC BY-NC-SA 4.0**, comme les autres projets d'iHorizon. La notice MIT de Cadence est conservée dans `NOTICE`.
+- Un flux qui se coupe en cours de piste est **rouvert là où il s'était arrêté** au lieu de terminer la piste.
+- SoundCloud lit ses flux **HLS AAC**, jamais la playlist adaptative.
+- La mise en miroir ne choisit plus d'**envois sans rapport ni de remixes**, et une source de type tonalité n'est jamais utilisée en repli d'une recherche texte.
+- Un `play` en `noReplace` ne repositionne jamais la piste démarrée par un fondu.
+- Délais d'en-têtes par tentative, délai de lecture des en-têtes côté serveur, et plusieurs écarts avec Cadence corrigés après un audit module par module.
+
+---
+
+## 🐳 Déploiement et documentation
+
+- Un **egg Pelican / Pterodactyl** (`contrib/pelican/`), construit dans les images standard de pelican-eggs sans script de démarrage, qui expose chaque réglage comme variable du panel.
+- Un site de documentation (mdBook) sur **wavyzon.ihorizon.org/docs/**, avec démarrage rapide, exemples, guide Pelican et référence de l'API.
+- Un nouveau logo et une charte graphique.
 
 ---
 

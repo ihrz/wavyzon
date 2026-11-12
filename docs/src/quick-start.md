@@ -56,7 +56,7 @@ curl -s -H "Authorization: $WAVYZON_PASSWORD" http://localhost:2333/v1/info
 ```
 
 ```json
-{ "version": "0.1.0", "sources": ["deezer", "soundcloud", "spotify", "applemusic", "http"], "dave": true, "mixing": true, "wireClock": true, "…": "…" }
+{ "version": "0.2.0", "sources": ["deezer", "soundcloud", "spotify", "applemusic", "http"], "dave": true, "mixing": true, "wireClock": true, "…": "…" }
 ```
 
 Search something:

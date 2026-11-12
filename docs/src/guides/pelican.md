@@ -59,7 +59,7 @@ Start the server. The console shows the configuration warnings (missing
 Spotify keys…) and then:
 
 ```text
-INFO wavyzon: wavyzon listening address=0.0.0.0:2333 version="0.1.0" sources=[…] plugins=["example", "apo"] dave=true
+INFO wavyzon: wavyzon listening address=0.0.0.0:2333 version="0.2.0" sources=[…] plugins=["example", "apo", "flowery", "genius"] dave=true
 ```
 
 The panel switches to **Running** on that line. **Stop** sends `^C`: the node
