@@ -16,9 +16,15 @@ When the bot queues a `nextTrack`, the current track now **fades into it** `WAVY
 
 ---
 
-## 🎤 Lyrics: Genius, then lyrics.ovh
+## 🎤 Lyrics: Genius, LRCLIB (synced) and lyrics.ovh
 
-`/v1/lyrics` and `/v4/lyrics` serve plain lyrics in the shape of Lavalink's **LavaLyrics** plugin, and `/v4/info` lists `lavalyrics-plugin`. The new `genius` plugin, **on by default**, asks [Genius](https://genius.com) first; when Genius has none or fails, lyrics.ovh answers (Genius off: lyrics.ovh directly). Set `WAVYZON_PLUGIN_GENIUS_ACCESS_TOKEN` (or `_CLIENT_ID` + `_CLIENT_SECRET`) for reliable searches; the `provider` field says which one answered. `livecheck -lyrics "<artist> - <title>"` checks the chain live.
+`/v1/lyrics` and `/v4/lyrics` serve lyrics in the shape of Lavalink's **LavaLyrics** plugin, and `/v4/info` lists `lavalyrics-plugin`. Three providers are asked in turn, the first that has lyrics answers and one that fails passes to the next:
+
+- **[LRCLIB](https://lrclib.net)**, no key, with **synced lyrics**: timed `lines` your bot can show in time with the music (`LRCLIB_ENABLED`).
+- **lyrics.ovh**, no key, plain text (`LYRICS_ENABLED`).
+- **[Genius](https://genius.com)**, the new `genius` plugin, on by default. Set `WAVYZON_PLUGIN_GENIUS_ACCESS_TOKEN` (or `_CLIENT_ID` + `_CLIENT_SECRET`). Genius' song pages refuse many servers even with a key; Genius is then skipped for 10 minutes.
+
+`WAVYZON_LYRICS_ORDER` sets the order (default `lrclib,lyricsovh,genius`; `genius,lrclib,lyricsovh` tries Genius first); the `provider` field says which one answered. `livecheck -lyrics "<artist> - <title>" [seconds]` checks the chain live.
 
 ---
 
@@ -36,7 +42,7 @@ The new `apo` plugin, **on by default**, plays through **Equalizer APO** configs
 
 ## 🧩 Plugin API
 
-Plugins can now add **lyrics providers** (`Registry::lyrics`), asked before lyrics.ovh, on top of sources, filters, event listeners and routes. The change is additive: `API_VERSION` stays `1`.
+Plugins can now add **lyrics providers** (`Registry::lyrics`), placed in `WAVYZON_LYRICS_ORDER` by name, on top of sources, filters, event listeners and routes. `Lyrics` carries timed `lines` (build plain lyrics with `Lyrics::plain`). `API_VERSION` stays `1`.
 
 ---
 

@@ -30,7 +30,7 @@ pub use serde_json;
 pub use event::{EndReason, Event, EventType};
 pub use failure::{Failure, Severity};
 pub use filter::{AudioFilter, CHANNELS, FRAME_SAMPLES, FilterFactory, SAMPLE_RATE};
-pub use lyrics::{Lyrics, LyricsProvider};
+pub use lyrics::{Lyrics, LyricsLine, LyricsProvider};
 pub use plugin::{API_VERSION, EventListener, Plugin, PluginContext, PluginError, PluginManifest, Registry};
 pub use source::{Format, IsrcLookup, Playable, Recommender, Source, Stream};
 pub use track::{LoadResult, LoadType, Playlist, Track};

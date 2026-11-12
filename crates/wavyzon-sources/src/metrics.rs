@@ -5,7 +5,7 @@
 //! `audio_cache_files`, `deezer_accounts_total{outcome}`, `seek_total{outcome}`
 //! and `cdn_range_ignored_total`, plus Wavyzon's `mirror_total{outcome}`,
 //! `recommendations_total{outcome}`, `deezer_recommendations_total{source}` and
-//! `lyrics_total{outcome}`, `lyrics_plugin_total{outcome}`.
+//! `lyrics_total{outcome}`, `lyrics_plugin_total{outcome}`, `lrclib_total{outcome}`.
 
 use std::sync::atomic::{AtomicI64, AtomicU64, Ordering};
 
@@ -64,6 +64,11 @@ counters!(
     LyricsCounters, "lyrics_total", "outcome" { found, cached, not_found, failed }
 );
 counters!(
+    /// LRCLIB lookups: found (`synced` counts those with timed lines too),
+    /// served from the cache, none, or failed.
+    LrclibCounters, "lrclib_total", "outcome" { found, synced, cached, not_found, failed }
+);
+counters!(
     /// Lookups by plugin lyrics providers (Genius), asked before lyrics.ovh:
     /// found, none (lyrics.ovh is asked next), or failed (lyrics.ovh is asked next).
     LyricsPluginCounters, "lyrics_plugin_total", "outcome" { found, not_found, failed }
@@ -89,6 +94,8 @@ pub struct Metrics {
     pub deezer_recommend: DeezerMixCounters,
     /// Lyrics lookups.
     pub lyrics: LyricsCounters,
+    /// LRCLIB lookups.
+    pub lrclib: LrclibCounters,
     /// Lyrics lookups by plugin providers.
     pub lyrics_plugins: LyricsPluginCounters,
     /// Range requests a CDN answered with the whole file.
@@ -154,6 +161,7 @@ impl Metrics {
             self.deezer_recommend.snapshot(),
         );
         push(LyricsCounters::METRIC, LyricsCounters::LABEL, self.lyrics.snapshot());
+        push(LrclibCounters::METRIC, LrclibCounters::LABEL, self.lrclib.snapshot());
         push(
             LyricsPluginCounters::METRIC,
             LyricsPluginCounters::LABEL,

@@ -614,13 +614,16 @@ pub trait LyricsProvider: Send + Sync + 'static {
 reg.lyrics(Arc::new(MyLyrics));
 ```
 
-- `/v1/lyrics` and `/v4/lyrics` ask plugin providers first, in plugin order,
-  then the built-in lyrics.ovh client (`LYRICS_ENABLED`); the first
-  `Ok(Some(_))` answers. `Ok(None)` and errors fall through to the next one
-  (errors are logged and counted in `wavyzon_lyrics_plugin_total`).
-- `Lyrics::provider` is shown to clients as `provider`.
+- `/v1/lyrics` and `/v4/lyrics` ask every provider (yours, LRCLIB,
+  lyrics.ovh) in `WAVYZON_LYRICS_ORDER`, matched against `name()` without
+  case or punctuation; a provider the variable does not name is asked after
+  the named ones. The first `Ok(Some(_))` answers; `Ok(None)` and errors pass
+  to the next (errors are logged and counted in `wavyzon_lyrics_plugin_total`).
+- `Lyrics::plain(text, provider)` for plain lyrics; fill `lines`
+  (`LyricsLine { timestamp_ms, duration_ms, line }`) for timed ones.
+  `provider` is shown to clients.
 - Registering a provider turns the lyrics routes on (and `lavalyrics-plugin`
-  in `/v4/info`) even with `LYRICS_ENABLED=false`.
+  in `/v4/info`) even with the built-in providers off.
 - Cache your answers: the node does not. See the `genius` plugin.
 
 ## Putting it together

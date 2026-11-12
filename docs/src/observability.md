@@ -55,6 +55,7 @@ source counters come from `wavyzon-sources`.
 | `wavyzon_recommendations_total` | `outcome` = `served`, `cached`, `empty`, `failed` | Recommendation (radio) outcomes |
 | `wavyzon_deezer_recommendations_total` | `source` = `track_mix`, `artist_radio` | Where Deezer's recommendation lists came from |
 | `wavyzon_lyrics_total` | `outcome` = `found`, `cached`, `not_found`, `failed` | Lyrics lookups (lyrics.ovh) |
+| `wavyzon_lrclib_total` | `outcome` = `found`, `synced`, `cached`, `not_found`, `failed` | LRCLIB lookups (`synced`: found with timed lines, also counted in `found`) |
 | `wavyzon_lyrics_plugin_total` | `outcome` = `found`, `not_found`, `failed` | Lookups by plugin lyrics providers (Genius), asked before lyrics.ovh; `not_found` and `failed` fall through to lyrics.ovh |
 | `wavyzon_deezer_accounts_total` | `outcome` = `switched`, `rejected` | Deezer accounts rejected, and streams served by a later account |
 | `wavyzon_seek_total` | `outcome` = `range`, `fallback` | How Deezer seeks were served (a byte range, or the whole file when the layout can't be seeked) |

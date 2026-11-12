@@ -105,6 +105,7 @@ pub fn config(dir: &TempDir, extra: &[(&str, &str)]) -> Config {
         ("APPLE_MUSIC_ENABLED", "false"),
         // hermetic: lyrics tests point LYRICS_API_URL at a local server
         ("LYRICS_ENABLED", "false"),
+        ("LRCLIB_ENABLED", "false"),
         ("WAVYZON_SEARCH_ORDER", "testtone"),
         ("WAVYZON_PLAYBACK_SOURCES", "testtone"),
         // no offline analysis of long test tones (it would outlive the test)
@@ -127,7 +128,7 @@ pub fn test_plugins(tone: Arc<ToneSource>, extra: &[(&str, &str)]) -> Vec<Arc<dy
 }
 
 /// Compiled-in plugins that would reach the internet, kept local. Genius is
-/// on by default and asked before lyrics.ovh: unless a test points
+/// on by default: unless a test points
 /// `WAVYZON_PLUGIN_GENIUS_API_URL`/`_WEB_URL` (in `extra`) at a fake, it
 /// gets a closed port, so lyrics tests also cover "Genius fails, lyrics.ovh
 /// answers". Plugins read the process environment, which tests leave alone.

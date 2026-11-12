@@ -38,6 +38,8 @@ fn hits(q: &str) -> Vec<wavyzon_plugin::serde_json::Value> {
         )]
     } else if q.contains("Blocked") {
         vec![song("Blocked", "Nobody", "/blocked-lyrics")]
+    } else if q.contains("Walled") {
+        vec![song("Walled", "Nobody", "/walled-lyrics")]
     } else {
         vec![]
     }
@@ -78,12 +80,17 @@ async fn fake() -> (String, Arc<Calls>) {
         c.page.fetch_add(1, Ordering::SeqCst);
         (StatusCode::OK, "<html>Just a moment...</html>").into_response()
     };
+    let walled = |State(c): State<Arc<Calls>>| async move {
+        c.page.fetch_add(1, Ordering::SeqCst);
+        (StatusCode::FORBIDDEN, "<html>Access denied</html>").into_response()
+    };
     let app: Router = Router::new()
         .route("/api/oauth/token", post(token))
         .route("/api/search", get(api))
         .route("/web/api/search/song", get(web))
         .route("/web/Queen-under-pressure-lyrics", get(page))
         .route("/web/blocked-lyrics", get(blocked))
+        .route("/web/walled-lyrics", get(walled))
         .with_state(calls.clone());
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let base = format!("http://{}", listener.local_addr().unwrap());
@@ -176,6 +183,27 @@ async fn a_miss_is_cached_and_a_broken_page_is_an_uncached_error() {
     assert!(g.lyrics(&track("Nobody", "Blocked")).await.is_err());
     assert!(g.lyrics(&track("Nobody", "Blocked")).await.is_err());
     assert_eq!(n(&calls.page), 2, "a failure was cached");
+}
+
+#[tokio::test]
+async fn a_refused_song_page_pauses_the_site() {
+    let (base, calls) = fake().await;
+    let g = GeniusClient::new(settings(&base, &[("access_token", "tok")])).unwrap();
+    let e = g.lyrics(&track("Nobody", "Walled")).await.unwrap_err();
+    assert!(e.to_string().contains("403"), "{e}");
+    assert_eq!((n(&calls.api), n(&calls.page)), (1, 1));
+    // Paused: answered at once, without searching or fetching.
+    assert!(g.lyrics(&track("Queen", "Under Pressure")).await.is_err());
+    assert_eq!((n(&calls.api), n(&calls.page)), (1, 1));
+    // Cached lyrics are still served while paused.
+    *g.site_paused_until.lock().unwrap() = None;
+    assert!(g.lyrics(&track("Queen", "Under Pressure")).await.unwrap().is_some());
+    *g.site_paused_until.lock().unwrap() = Some(Instant::now() + SITE_PAUSE);
+    assert!(g.lyrics(&track("Queen", "Under Pressure")).await.unwrap().is_some());
+    // Once the pause is over, Genius is tried again.
+    *g.site_paused_until.lock().unwrap() = Some(Instant::now() - Duration::from_secs(1));
+    assert!(g.lyrics(&track("Nobody", "Walled")).await.is_err());
+    assert_eq!(n(&calls.page), 3);
 }
 
 #[tokio::test]

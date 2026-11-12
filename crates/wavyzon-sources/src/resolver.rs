@@ -46,6 +46,7 @@ use wavyzon_plugin::{Failure, Format, LoadResult, LoadType, Lyrics, LyricsProvid
 
 use crate::audiocache::Store;
 use crate::cache::Lru;
+use crate::lrclib::LrclibClient;
 use crate::lyrics::LyricsClient;
 use crate::matching::{best_match, fan_edit, normalize_isrc, rank_for_query, within_drift};
 use crate::metrics::{Metrics, inc};
@@ -101,10 +102,9 @@ struct Inner {
     warm_slots: Arc<Semaphore>,
     heads: Lru<String, Arc<Head>>,
     disk: Option<DiskCache>,
-    /// Plugin providers first, lyrics.ovh last.
-    lyrics: Vec<Arc<dyn LyricsProvider>>,
-    /// How many of `lyrics` come from plugins (counted in `lyrics_plugin_total`).
-    lyrics_plugins: usize,
+    /// Lyrics providers in the order they are asked, and whether each comes
+    /// from a plugin (counted in `lyrics_plugin_total`).
+    lyrics: Vec<(Arc<dyn LyricsProvider>, bool)>,
     metrics: Arc<Metrics>,
 }
 
@@ -118,7 +118,9 @@ pub struct SourcesBuilder {
     prefetch_on_load: bool,
     audio_cache: Option<Arc<Store>>,
     lyrics: Option<Arc<LyricsClient>>,
+    lrclib: Option<Arc<LrclibClient>>,
     lyrics_plugins: Vec<Arc<dyn LyricsProvider>>,
+    lyrics_order: Vec<String>,
     metrics: Arc<Metrics>,
 }
 
@@ -134,7 +136,9 @@ impl SourcesBuilder {
             prefetch_on_load: false,
             audio_cache: None,
             lyrics: None,
+            lrclib: None,
             lyrics_plugins: vec![],
+            lyrics_order: vec![],
             metrics: Arc::new(Metrics::default()),
         }
     }
@@ -181,14 +185,27 @@ impl SourcesBuilder {
         self
     }
 
-    /// Serve lyrics through this lyrics.ovh client, after any plugin
-    /// provider (no client and no provider: lyrics are off).
+    /// Serve lyrics through this lyrics.ovh client (no client and no
+    /// provider: lyrics are off).
     pub fn lyrics(mut self, client: Arc<LyricsClient>) -> Self {
         self.lyrics = Some(client);
         self
     }
 
-    /// Lyrics providers registered by plugins, asked in order before lyrics.ovh.
+    /// Serve lyrics through this LRCLIB client.
+    pub fn lrclib(mut self, client: Arc<LrclibClient>) -> Self {
+        self.lrclib = Some(client);
+        self
+    }
+
+    /// The order lyrics providers are asked in, by name (`WAVYZON_LYRICS_ORDER`);
+    /// empty = plugin providers, then LRCLIB, then lyrics.ovh.
+    pub fn lyrics_order(mut self, names: Vec<String>) -> Self {
+        self.lyrics_order = names;
+        self
+    }
+
+    /// Lyrics providers registered by plugins.
     pub fn lyrics_providers(mut self, it: impl IntoIterator<Item = Arc<dyn LyricsProvider>>) -> Self {
         self.lyrics_plugins.extend(it);
         self
@@ -232,13 +249,17 @@ impl SourcesBuilder {
                 playback.push(s.clone());
             }
         }
-        let lyrics_plugins = self.lyrics_plugins.len();
-        let mut lyrics = self.lyrics_plugins;
-        if let Some(ovh) = self.lyrics {
-            lyrics.push(ovh);
+        let mut lyrics: Vec<(Arc<dyn LyricsProvider>, bool)> =
+            self.lyrics_plugins.into_iter().map(|p| (p, true)).collect();
+        if let Some(c) = self.lrclib {
+            lyrics.push((c, false));
         }
+        if let Some(c) = self.lyrics {
+            lyrics.push((c, false));
+        }
+        let lyrics = order_lyrics(lyrics, &self.lyrics_order);
         tracing::info!(
-            lyrics = ?lyrics.iter().map(|p| p.name().to_string()).collect::<Vec<_>>(),
+            lyrics = ?lyrics.iter().map(|(p, _)| p.name().to_string()).collect::<Vec<_>>(),
             sources = ?ordered.iter().map(|s| s.name()).collect::<Vec<_>>(),
             playback = ?playback.iter().map(|s| s.name()).collect::<Vec<_>>(),
             "sources ready"
@@ -261,10 +282,39 @@ impl SourcesBuilder {
                 plays: Lru::new(PLAY_ENTRIES, PLAY_WINDOW),
             }),
             lyrics,
-            lyrics_plugins,
             metrics: self.metrics,
         }))
     }
+}
+
+/// A lyrics provider name for ordering: lowercase letters and digits only
+/// (`lyrics.ovh`, `Lyrics-OVH` and `lyricsovh` are the same).
+fn lyrics_key(name: &str) -> String {
+    name.chars()
+        .filter(char::is_ascii_alphanumeric)
+        .map(|c| c.to_ascii_lowercase())
+        .collect()
+}
+
+/// `providers` sorted by `order` (names); providers it does not name keep
+/// their relative order after the named ones. A name that matches no enabled
+/// provider is logged.
+fn order_lyrics(
+    mut providers: Vec<(Arc<dyn LyricsProvider>, bool)>,
+    order: &[String],
+) -> Vec<(Arc<dyn LyricsProvider>, bool)> {
+    let wanted: Vec<String> = order.iter().map(|n| lyrics_key(n)).filter(|k| !k.is_empty()).collect();
+    for (name, key) in order.iter().zip(order.iter().map(|n| lyrics_key(n))) {
+        if !providers.iter().any(|(p, _)| lyrics_key(p.name()) == key) {
+            tracing::warn!(provider = %name, "WAVYZON_LYRICS_ORDER names a lyrics provider that is not enabled, ignored");
+        }
+    }
+    // Stable: unnamed providers keep their default order, after the named ones.
+    providers.sort_by_key(|(p, _)| {
+        let k = lyrics_key(p.name());
+        wanted.iter().position(|w| *w == k).unwrap_or(usize::MAX)
+    });
+    providers
 }
 
 /// The source registry and resolver. Cheap to clone.
@@ -331,18 +381,18 @@ impl Sources {
 
     /// Names of the lyrics providers, in the order they are asked.
     pub fn lyrics_providers(&self) -> Vec<String> {
-        self.0.lyrics.iter().map(|p| p.name().to_string()).collect()
+        self.0.lyrics.iter().map(|(p, _)| p.name().to_string()).collect()
     }
 
-    /// Lyrics of `track` from the first provider that has them: plugin
-    /// providers (Genius) in order, then lyrics.ovh. A provider that fails
+    /// Lyrics of `track` from the first provider that has them, in
+    /// `WAVYZON_LYRICS_ORDER` (default: LRCLIB, lyrics.ovh, Genius). A provider that fails
     /// is logged and skipped. `Ok(None)` when at least one provider answered
     /// and none had lyrics; the last error when every provider failed.
     pub async fn lyrics(&self, track: &Track) -> Result<Option<Lyrics>, Failure> {
         let mut failure = None;
         let mut answered = false;
-        for (i, p) in self.0.lyrics.iter().enumerate() {
-            let plugin = i < self.0.lyrics_plugins;
+        for (p, plugin) in &self.0.lyrics {
+            let plugin = *plugin;
             match p.lyrics(track).await {
                 Ok(Some(found)) => {
                     if plugin {
@@ -1365,10 +1415,7 @@ mod tests {
             self.2.fetch_add(1, Ordering::SeqCst);
             match self.1 {
                 None => Err(Failure::common(self.0, "down", None)),
-                Some(found) => Ok(found.map(|t| Lyrics {
-                    text: t.into(),
-                    provider: self.0.to_string().leak(),
-                })),
+                Some(found) => Ok(found.map(|t| Lyrics::plain(t, self.0.to_string().leak()))),
             }
         }
     }
@@ -1407,5 +1454,25 @@ mod tests {
         // Every provider failed: the error.
         let (g, o) = (genius(None), ovh(None));
         assert!(chain(&[&g, &o]).lyrics(&t).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn lyrics_order_follows_the_names() {
+        let t = tr("x", "1", "Song", "Artist", 0);
+        let p = |name, text| Arc::new(FakeLyrics(name, Some(Some(text)), AtomicU32::new(0)));
+        let (genius, lrclib, ovh) = (p("genius", "g"), p("lrclib", "l"), p("lyrics.ovh", "o"));
+        let s = SourcesBuilder::bare(vec![], vec![])
+            .lyrics_providers([genius.clone() as Arc<dyn LyricsProvider>, lrclib.clone(), ovh.clone()])
+            .lyrics_order(vec!["LRCLIB".into(), "lyricsovh".into(), "nope".into()])
+            .build();
+        // Named first, in order; genius (not named) after them.
+        assert_eq!(s.lyrics_providers(), ["lrclib", "lyrics.ovh", "genius"]);
+        assert_eq!(s.lyrics(&t).await.unwrap().unwrap().provider, "lrclib");
+        assert_eq!(genius.2.load(Ordering::SeqCst), 0);
+        // No order: as registered.
+        let s = SourcesBuilder::bare(vec![], vec![])
+            .lyrics_providers([genius as Arc<dyn LyricsProvider>, lrclib, ovh])
+            .build();
+        assert_eq!(s.lyrics_providers(), ["genius", "lrclib", "lyrics.ovh"]);
     }
 }

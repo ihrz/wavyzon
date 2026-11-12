@@ -13,6 +13,29 @@ pub struct Lyrics {
     pub text: Arc<str>,
     /// Reported as `provider` in the LavaLyrics response (`"genius.com"`).
     pub provider: &'static str,
+    /// Timed lines, in order (LavaLyrics' `lines`); empty for plain lyrics.
+    pub lines: Arc<[LyricsLine]>,
+}
+
+impl Lyrics {
+    /// Plain lyrics, without timed lines.
+    pub fn plain(text: impl Into<Arc<str>>, provider: &'static str) -> Self {
+        Self {
+            text: text.into(),
+            provider,
+            lines: Arc::from([]),
+        }
+    }
+}
+
+/// One timed line of synced lyrics.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LyricsLine {
+    /// When the line starts, in ms from the start of the track.
+    pub timestamp_ms: i64,
+    /// How long it lasts, in ms (until the next line; 0 when unknown).
+    pub duration_ms: i64,
+    pub line: Arc<str>,
 }
 
 /// A lyrics lookup. The node asks plugin providers first, in plugin order,

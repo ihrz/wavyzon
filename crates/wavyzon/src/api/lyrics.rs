@@ -1,7 +1,7 @@
 //! Lyrics, in the shape of Lavalink's LavaLyrics plugin API so Lavalink
 //! clients can read them (not in Cadence). Served by
-//! [`wavyzon_sources::Sources::lyrics`]: plugin providers first (Genius),
-//! then lyrics.ovh.
+//! [`wavyzon_sources::Sources::lyrics`], in `WAVYZON_LYRICS_ORDER` (default
+//! LRCLIB, lyrics.ovh, Genius). LRCLIB's synced lyrics fill `lines`.
 //!
 //! `200` with the lyrics, `204` when there are none, `404` when lyrics are
 //! disabled or nothing is playing, `502` when every provider failed.
@@ -53,7 +53,12 @@ async fn lyrics_of(api: &Api, track: &Track) -> ApiResult {
             "sourceName": track.source,
             "provider": l.provider,
             "text": &*l.text,
-            "lines": [],
+            "lines": l.lines.iter().map(|line| json!({
+                "timestamp": line.timestamp_ms,
+                "duration": line.duration_ms,
+                "line": &*line.line,
+                "plugin": {},
+            })).collect::<Vec<_>>(),
             "plugin": {},
         }))),
         Ok(None) => Ok(no_content()),

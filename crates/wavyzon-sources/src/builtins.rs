@@ -63,6 +63,21 @@ impl Sources {
             );
             b = b.lyrics(Arc::new(lyrics));
         }
+        if cfg.lrclib.enabled {
+            let opts = HttpOptions {
+                // LRCLIB asks every client to identify itself.
+                user_agent: crate::lrclib::user_agent(),
+                ..HttpOptions::with_proxy(cfg.lrclib.proxy.clone())
+            };
+            let http = HttpClient::new(crate::lrclib::NAME, opts).map_err(|error| BuildError::Http {
+                source_name: crate::lrclib::NAME,
+                error,
+            })?;
+            let lrclib =
+                crate::lrclib::LrclibClient::new(Arc::new(http), cfg.lrclib.api_url.clone(), b.metrics_handle());
+            b = b.lrclib(Arc::new(lrclib));
+        }
+        b = b.lyrics_order(cfg.lyrics_order.clone());
         if cfg.deezer.enabled {
             let setup = crate::deezer::Setup {
                 arls: cfg.deezer.arl.clone(),

@@ -94,7 +94,7 @@ pub fn clean_artist(artist: &str) -> String {
 
 /// Normalized text: `\n` line ends, at most one blank line in a row, and no
 /// "Paroles de la chanson X par Y" header (some lyrics.ovh entries have one).
-fn tidy(text: &str) -> String {
+pub(crate) fn tidy(text: &str) -> String {
     let text = text.replace("\r\n", "\n").replace('\r', "\n");
     let mut out = String::with_capacity(text.len());
     let mut blank = 0;
@@ -193,10 +193,7 @@ impl LyricsClient {
         }
         let answer: Answer = serde_json::from_slice(&body).map_err(|e| bad_json(NAME, e))?;
         let text = tidy(answer.lyrics.as_deref().unwrap_or_default());
-        Ok((!text.is_empty()).then(|| Lyrics {
-            text: text.into(),
-            provider: PROVIDER,
-        }))
+        Ok((!text.is_empty()).then(|| Lyrics::plain(text, PROVIDER)))
     }
 }
 

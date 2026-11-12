@@ -8,7 +8,7 @@
 //! livecheck -bench q1 q2 …      search / open / first-audio latency per query
 //! livecheck -seek ["<query>"]   seeks vs a full decode (bit-exact after warm-up)
 //! livecheck -rec "<query>"      recommendations for the first result
-//! livecheck -lyrics "<artist> - <title>"   lyrics through the provider chain (Genius, lyrics.ovh)
+//! livecheck -lyrics "<artist> - <title>" [seconds]   lyrics through the provider chain (WAVYZON_LYRICS_ORDER)
 //! ```
 //!
 //! Reads the same environment as the node (`WAVYZON_PASSWORD` included).
@@ -233,11 +233,13 @@ async fn recommend(s: &Sources, query: &str) -> anyhow::Result<()> {
 }
 
 /// Each provider on its own, then the chain the node serves.
-async fn lyrics(s: &Sources, query: &str) -> anyhow::Result<()> {
+async fn lyrics(s: &Sources, query: &str, seconds: Option<&str>) -> anyhow::Result<()> {
     let (author, title) = query.split_once(" - ").context("expected \"<artist> - <title>\"")?;
     let track = Track {
         author: author.trim().into(),
         title: title.trim().into(),
+        // LRCLIB matches synced lyrics on the duration.
+        duration_ms: seconds.and_then(|s| s.parse::<i64>().ok()).unwrap_or(0) * 1000,
         ..Default::default()
     };
     if !s.lyrics_enabled() {
@@ -250,7 +252,16 @@ async fn lyrics(s: &Sources, query: &str) -> anyhow::Result<()> {
         bail!("no lyrics for {author} - {title} ({:?})", start.elapsed());
     };
     let lines: Vec<&str> = l.text.lines().collect();
-    println!("{} lines from {} in {:?}:", lines.len(), l.provider, start.elapsed());
+    println!(
+        "{} lines ({} timed) from {} in {:?}:",
+        lines.len(),
+        l.lines.len(),
+        l.provider,
+        start.elapsed()
+    );
+    for t in l.lines.iter().take(4) {
+        println!("  [{:>6} ms +{:>5}] {}", t.timestamp_ms, t.duration_ms, t.line);
+    }
     for line in lines.iter().take(12) {
         println!("  {line}");
     }
@@ -267,7 +278,7 @@ async fn run() -> anyhow::Result<()> {
             Some("-bench") => bench(&s, &args[1..]).await,
             Some("-seek") => seek(&s, &rest(1)).await,
             Some("-rec") => recommend(&s, &rest(1)).await,
-            Some("-lyrics") => lyrics(&s, &rest(1)).await,
+            Some("-lyrics") => lyrics(&s, &rest(1), args.get(2).map(String::as_str)).await,
             Some(q) => check(&s, q).await,
             None => check(&s, DEFAULT_QUERY).await,
         }

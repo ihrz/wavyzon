@@ -29,6 +29,12 @@
 //!
 //! A token Genius rejects (401) is logged and the public search is used.
 //!
+//! The API host answers servers, but genius.com (song pages, public search)
+//! sits behind an anti-bot wall that refused every server tried so far with a
+//! 403, keys or not (Nov 2026). After such a refusal Genius is skipped for
+//! [`SITE_PAUSE`] (the next provider answers at once), then tried again.
+//! `PROXY` routes every Genius request elsewhere.
+//!
 //! On by default (cargo feature `plugin-genius`). Settings, all optional,
 //! from `WAVYZON_PLUGIN_GENIUS_<KEY>`:
 //!
@@ -83,6 +89,10 @@ const MISSING_TTL: Duration = Duration::from_secs(6 * 3600);
 const TOKEN_RETRY: Duration = Duration::from_secs(600);
 /// Refresh a token this long before Genius says it expires.
 const TOKEN_MARGIN: Duration = Duration::from_secs(60);
+/// After genius.com refuses this server (403/429, its anti-bot wall), skip
+/// Genius this long: lyrics.ovh answers at once instead of after a search and
+/// a refused page. The API host is not concerned (it answers servers).
+pub const SITE_PAUSE: Duration = Duration::from_secs(600);
 
 /// Plugin settings (see the crate docs).
 #[derive(Clone)]
@@ -229,6 +239,8 @@ pub struct GeniusClient {
     auth: Auth,
     found: Lru<String, Lyrics>,
     missing: Lru<String, ()>,
+    /// Until when genius.com is skipped (see [`SITE_PAUSE`]).
+    site_paused_until: std::sync::Mutex<Option<Instant>>,
 }
 
 /// Search answers: the API's `response.hits`, the web search's
@@ -304,6 +316,7 @@ impl GeniusClient {
             auth,
             found: Lru::new(ENTRIES, FOUND_TTL),
             missing: Lru::new(ENTRIES, MISSING_TTL),
+            site_paused_until: std::sync::Mutex::new(None),
         })
     }
 
@@ -405,6 +418,37 @@ impl GeniusClient {
         Ok(answer.songs())
     }
 
+    /// Whether genius.com is being skipped after a refusal.
+    fn site_paused(&self) -> bool {
+        let mut until = self.site_paused_until.lock().unwrap_or_else(|e| e.into_inner());
+        match *until {
+            Some(t) if Instant::now() < t => true,
+            Some(_) => {
+                *until = None;
+                false
+            }
+            None => false,
+        }
+    }
+
+    /// genius.com answered `status`: on a refusal, skip it for [`SITE_PAUSE`].
+    fn site_refused(&self, status: u16, what: &str) {
+        if !matches!(status, 403 | 429) {
+            return;
+        }
+        let mut until = self.site_paused_until.lock().unwrap_or_else(|e| e.into_inner());
+        if until.is_none() {
+            tracing::warn!(
+                plugin = NAME,
+                status,
+                minutes = SITE_PAUSE.as_secs() / 60,
+                "genius.com refuses this server ({what}); Genius is skipped for a while and the next lyrics provider answers. \
+                 The API search works, but the lyrics live on genius.com, behind an anti-bot wall"
+            );
+        }
+        *until = Some(Instant::now() + SITE_PAUSE);
+    }
+
     /// Song hits for `q`: the API with a token, else (or when the API
     /// fails) the public web search.
     async fn search(&self, q: &str) -> Result<Vec<Hit>, Failure> {
@@ -421,7 +465,12 @@ impl GeniusClient {
         }
         let mut url = join(&self.settings.web_url, "/api/search/song")?;
         url.query_pairs_mut().append_pair("q", q).append_pair("per_page", "10");
-        self.get_json(url, None).await.map_err(fail)
+        self.get_json(url, None).await.map_err(|e| {
+            if let Some(status) = e.status() {
+                self.site_refused(status, "public search");
+            }
+            fail(e)
+        })
     }
 
     /// The song page at `path` (`/Artist-title-lyrics`), `None` on a 404.
@@ -444,6 +493,7 @@ impl GeniusClient {
             return Ok(None);
         }
         if !(200..300).contains(&status) {
+            self.site_refused(status, "song page");
             return Err(Failure::from_status(
                 NAME,
                 status,
@@ -494,10 +544,7 @@ impl GeniusClient {
             Some(t) if t.is_empty() => Ok(None),
             Some(t) => {
                 tracing::debug!(plugin = NAME, path = %hit.path, "lyrics found on Genius");
-                Ok(Some(Lyrics {
-                    text: t.into(),
-                    provider: PROVIDER,
-                }))
+                Ok(Some(Lyrics::plain(t, PROVIDER)))
             }
         }
     }
@@ -524,6 +571,13 @@ impl LyricsProvider for GeniusClient {
         }
         if self.missing.contains(&key) {
             return Ok(None);
+        }
+        if self.site_paused() {
+            return Err(Failure::common(
+                NAME,
+                "genius.com refused this server recently; skipped",
+                None,
+            ));
         }
         match tokio::time::timeout(self.settings.timeout, self.lookup(artist, title)).await {
             Err(_) => Err(Failure::common(NAME, "Genius timed out", None)),

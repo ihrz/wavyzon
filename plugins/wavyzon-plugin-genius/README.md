@@ -1,9 +1,9 @@
 # wavyzon-plugin-genius
 
 [Genius](https://genius.com) lyrics for Wavyzon's `/v1/lyrics` and
-`/v4/lyrics` (LavaLyrics' API). Genius is asked first; when it has nothing
-or fails, the node's built-in lyrics.ovh client answers. With the plugin
-off, lyrics.ovh answers directly.
+`/v4/lyrics` (LavaLyrics' API). It is last in the node's default
+`WAVYZON_LYRICS_ORDER` (`lrclib,lyricsovh,genius`): put it first
+(`genius,lrclib,lyricsovh`) to try Genius before the others.
 
 On by default (cargo feature `plugin-genius`). Give it a Client Access Token
 from <https://genius.com/api-clients> for reliable searches:

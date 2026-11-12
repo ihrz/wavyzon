@@ -18,7 +18,7 @@ changes beyond the node address and password.
 | `GET /v4/sessions/{id}/players`, `GET`/`PATCH`/`DELETE …/players/{guild}` | ✅ including `noReplace`, `userData`, `track.identifier` (`endTime` is accepted and ignored) |
 | Standard filters | ✅ `equalizer`, `timescale`, `karaoke`, `lowPass`, `tremolo`, `vibrato`, `rotation`, plus `reverb` |
 | `pluginFilters` | ✅ routed to [plugin filters](filters.md#plugin-filters) |
-| LavaLyrics `GET /v4/lyrics`, `GET …/players/{guild}/track/lyrics` | ✅ plain lyrics from [Genius](genius-lyrics.md), then lyrics.ovh (no timed lines); `lavalyrics-plugin` is listed in `/v4/info` `plugins` |
+| LavaLyrics `GET /v4/lyrics`, `GET …/players/{guild}/track/lyrics` | ✅ lyrics from [Genius](genius-lyrics.md), LRCLIB (with timed `lines`) or lyrics.ovh, order set by `WAVYZON_LYRICS_ORDER`; `lavalyrics-plugin` is listed in `/v4/info` `plugins` |
 | LavaSrc's Flowery TTS (`ftts://…`) | ✅ [`flowery` plugin](flowery-tts.md), on by default; `ftts` and `flowery-tts` are listed in `sourceManagers` |
 | `/v4/routeplanner/*` | ❌ (no IP rotation) |
 | `channelMix`, `distortion` filters | ❌ not listed in `/v4/info` `filters`; ignored |

@@ -51,7 +51,7 @@ plugins/wavyzon-plugin-apo/       Equalizer APO configs as pluginFilters.apo: pa
 plugins/wavyzon-plugin-flowery/   Flowery TTS source (on by default): LavaSrc's ftts://<text>?voice=…
                                   identifiers, registered as flowery-tts + ftts (lavalink-client checks
                                   sourceManagers), streams /v1/tts through wavyzon-sources' HttpClient
-plugins/wavyzon-plugin-genius/    Genius lyrics provider (on by default), asked before lyrics.ovh:
+plugins/wavyzon-plugin-genius/    Genius lyrics provider (on by default, last in WAVYZON_LYRICS_ORDER):
                                   API search with ACCESS_TOKEN (or CLIENT_ID+SECRET exchanged), else
                                   genius.com's public search; lyrics scraped from data-lyrics-container
 docs/                 mdBook (docs/src/SUMMARY.md is the index)
@@ -92,8 +92,8 @@ make deny         # cargo-deny (licences, advisories)
 `livecheck` is the designated **live** verifier (the only thing allowed to
 touch the internet): `check` decodes real music from the resolved path,
 `-seek` compares range seeks against a full decode (bit-exact after the
-warm-up frames), `-rec` shows recommendations, `-lyrics "<artist> - <title>"` runs the
-lyrics chain (Genius, lyrics.ovh), `-bench` measures
+warm-up frames), `-rec` shows recommendations, `-lyrics "<artist> - <title>" [seconds]` runs
+the lyrics chain (WAVYZON_LYRICS_ORDER), `-bench` measures
 search/open/first-audio latency. It reads the node environment, so real
 credentials go in a local gitignored `.env` — never in tracked files.
 
@@ -174,16 +174,23 @@ peer index read; 0700 state dir; mirror fallback miss caching.
   the current track ends (`auto_crossfade_locked` in `gapless.rs`), with the
   same `finished` + adoption events as a gapless swap. `0` = Cadence's strict
   gapless.
-- Lyrics (new): `Sources::lyrics` asks plugin `LyricsProvider`s (the `genius`
-  plugin, on by default) then lyrics.ovh (`wavyzon-sources/src/lyrics.rs`);
-  first `Some` wins, `None`/errors fall through, error only when all failed.
+- Lyrics (new): `Sources::lyrics` asks `LyricsProvider`s in
+  `WAVYZON_LYRICS_ORDER` (default `lrclib,lyricsovh,genius`; names compared
+  without case/punctuation; unlisted enabled ones go last): the `genius`
+  plugin, LRCLIB (`wavyzon-sources/src/lrclib.rs`, synced LRC → LavaLyrics
+  `lines`, User-Agent required by LRCLIB) and lyrics.ovh
+  (`wavyzon-sources/src/lyrics.rs`); first `Some` wins, `None`/errors fall
+  through, error only when all failed. Node tests turn LRCLIB off
+  (`LRCLIB_ENABLED=false` in `tests/common::config`).
   Served on `/v1/lyrics` and `/v4/lyrics` in LavaLyrics' shape; `/v4/info`
   lists `lavalyrics-plugin` (never a lyrics *source* plugin: Wavyzon is not
   LavaSrc). Node tests swap the compiled-in Genius for one on a closed local
   port (`tests/common::hermetic`); point it at a fake with
   `WAVYZON_PLUGIN_GENIUS_*` in `start(&[…])` extras. Live check:
-  `livecheck -lyrics "<artist> - <title>"`. Without a key, genius.com's public
-  search answered 403 from a dev machine (Nov 2026): lyrics.ovh served.
+  `livecheck -lyrics "<artist> - <title>" [seconds]`. genius.com song pages
+  answered 403 to a dev machine and a production server even with a valid key
+  (Nov 2026; the API search works): the plugin then pauses Genius 10 min
+  (`SITE_PAUSE`) and the next provider answers. Hence its default place: last.
 - `ytsearch:`/`ytmsearch:` are plain searches through `WAVYZON_SEARCH_ORDER`
   (a test pins this).
 - Metric labels for `host_total` and `recommendations_total`, runtime gauges,

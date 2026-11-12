@@ -16,9 +16,15 @@ Quand le bot met en file un `nextTrack`, la piste en cours **se fond dans la sui
 
 ---
 
-## 🎤 Paroles : Genius, puis lyrics.ovh
+## 🎤 Paroles : Genius, LRCLIB (synchronisées) et lyrics.ovh
 
-`/v1/lyrics` et `/v4/lyrics` servent les paroles au format du plugin **LavaLyrics** de Lavalink, et `/v4/info` annonce `lavalyrics-plugin`. Le nouveau plugin `genius`, **activé par défaut**, interroge d'abord [Genius](https://genius.com) ; quand Genius n'en a pas ou échoue, lyrics.ovh répond (Genius désactivé : lyrics.ovh directement). Renseignez `WAVYZON_PLUGIN_GENIUS_ACCESS_TOKEN` (ou `_CLIENT_ID` + `_CLIENT_SECRET`) pour des recherches fiables ; le champ `provider` indique qui a répondu. `livecheck -lyrics "<artiste> - <titre>"` vérifie la chaîne en direct.
+`/v1/lyrics` et `/v4/lyrics` servent les paroles au format du plugin **LavaLyrics** de Lavalink, et `/v4/info` annonce `lavalyrics-plugin`. Trois fournisseurs sont interrogés tour à tour : le premier qui a les paroles répond, et celui qui échoue passe la main au suivant :
+
+- **[LRCLIB](https://lrclib.net)**, sans clé, avec des **paroles synchronisées** : des `lines` horodatées que le bot peut afficher en rythme avec la musique (`LRCLIB_ENABLED`).
+- **lyrics.ovh**, sans clé, texte brut (`LYRICS_ENABLED`).
+- **[Genius](https://genius.com)**, le nouveau plugin `genius`, activé par défaut. Renseignez `WAVYZON_PLUGIN_GENIUS_ACCESS_TOKEN` (ou `_CLIENT_ID` + `_CLIENT_SECRET`). Les pages de Genius refusent beaucoup de serveurs même avec une clé ; Genius est alors mis de côté 10 minutes.
+
+`WAVYZON_LYRICS_ORDER` fixe l'ordre (par défaut `lrclib,lyricsovh,genius` ; `genius,lrclib,lyricsovh` essaie Genius en premier) ; le champ `provider` indique qui a répondu. `livecheck -lyrics "<artiste> - <titre>" [secondes]` vérifie la chaîne en direct.
 
 ---
 
@@ -36,7 +42,7 @@ Le nouveau plugin `apo`, **activé par défaut**, fait passer la lecture par des
 
 ## 🧩 API de plugins
 
-Les plugins peuvent désormais ajouter des **fournisseurs de paroles** (`Registry::lyrics`), interrogés avant lyrics.ovh, en plus des sources, filtres, écouteurs d'événements et routes. Le changement est purement additif : `API_VERSION` reste `1`.
+Les plugins peuvent désormais ajouter des **fournisseurs de paroles** (`Registry::lyrics`), placés par leur nom dans `WAVYZON_LYRICS_ORDER`, en plus des sources, filtres, écouteurs d'événements et routes. `Lyrics` porte des `lines` horodatées (paroles simples : `Lyrics::plain`). `API_VERSION` reste `1`.
 
 ---
 

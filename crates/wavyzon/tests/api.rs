@@ -812,7 +812,13 @@ fn song(author: &str, title: &str) -> String {
 #[tokio::test]
 async fn lyrics_follow_the_lavalyrics_api() {
     let api = fake_lyrics().await;
-    let n = start(&[("LYRICS_ENABLED", "true"), ("LYRICS_API_URL", &api)]).await;
+    // Genius first: it fails (closed port) and lyrics.ovh still answers.
+    let n = start(&[
+        ("LYRICS_ENABLED", "true"),
+        ("LYRICS_API_URL", &api),
+        ("WAVYZON_LYRICS_ORDER", "genius,lyricsovh"),
+    ])
+    .await;
     for v in ["v1", "v4"] {
         let url = n.url(&format!("/{v}/lyrics?track={}", song("Queen", "Under Pressure")));
         let (status, body) = call(Method::GET, &url, None).await;
@@ -892,7 +898,7 @@ async fn fake_genius() -> String {
     base
 }
 
-/// Genius on: Genius first, lyrics.ovh when Genius has nothing; with
+/// Genius put first: Genius, then lyrics.ovh when Genius has nothing; with
 /// lyrics.ovh off, Genius alone still serves lyrics.
 #[cfg(feature = "plugin-genius")]
 #[tokio::test]
@@ -903,6 +909,7 @@ async fn lyrics_ask_genius_first() {
         ("LYRICS_ENABLED", "true"),
         ("LYRICS_API_URL", &ovh),
         ("WAVYZON_PLUGIN_GENIUS_WEB_URL", &genius),
+        ("WAVYZON_LYRICS_ORDER", "genius,lyricsovh"),
     ])
     .await;
     let url = n.url(&format!("/v4/lyrics?track={}", song("Queen", "Under Pressure")));
@@ -932,6 +939,72 @@ async fn lyrics_ask_genius_first() {
     assert_eq!(body["provider"], "genius.com");
     let url = n.url(&format!("/v1/lyrics?track={}", song("Nobody", "Nothing")));
     assert_eq!(call(Method::GET, &url, None).await.0, 204);
+    n.stop().await;
+}
+
+/// A fake LRCLIB: synced lyrics for "Queen / Under Pressure" (any length).
+async fn fake_lrclib() -> String {
+    use axum::extract::Query;
+    use axum::response::IntoResponse;
+    use std::collections::HashMap;
+    let app = axum::Router::new()
+        .route(
+            "/api/get",
+            axum::routing::get(|Query(q): Query<HashMap<String, String>>| async move {
+                if q["artist_name"] == "Queen" && q["track_name"] == "Under Pressure" {
+                    axum::Json(
+                        json!({"trackName": "Under Pressure", "artistName": "Queen", "duration": 3,
+                        "instrumental": false, "plainLyrics": "Pressure\nPushing down on me",
+                        "syncedLyrics": "[00:00.50]Pressure\n[00:01.75]Pushing down on me"}),
+                    )
+                    .into_response()
+                } else {
+                    (axum::http::StatusCode::NOT_FOUND, r#"{"name":"TrackNotFound"}"#).into_response()
+                }
+            }),
+        )
+        .route("/api/search", axum::routing::get(|| async { axum::Json(json!([])) }));
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let base = format!("http://{}/api", listener.local_addr().unwrap());
+    tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+    base
+}
+
+/// LRCLIB's synced lyrics fill LavaLyrics' `lines`, and
+/// `WAVYZON_LYRICS_ORDER` picks who answers first.
+#[tokio::test]
+async fn lyrics_order_and_synced_lines() {
+    let ovh = fake_lyrics().await;
+    let lrclib = fake_lrclib().await;
+    let base = [
+        ("LYRICS_ENABLED", "true"),
+        ("LYRICS_API_URL", ovh.as_str()),
+        ("LRCLIB_ENABLED", "true"),
+        ("LRCLIB_API_URL", lrclib.as_str()),
+    ];
+    let n = start(&base).await;
+    let url = n.url(&format!("/v4/lyrics?track={}", song("Queen", "Under Pressure")));
+    let (status, body) = call(Method::GET, &url, None).await;
+    assert_eq!(status, 200, "{body}");
+    assert_eq!(body["provider"], "lrclib.net");
+    assert_eq!(body["text"], "Pressure\nPushing down on me");
+    assert_eq!(
+        body["lines"],
+        json!([
+            {"timestamp": 500, "duration": 1250, "line": "Pressure", "plugin": {}},
+            {"timestamp": 1750, "duration": 1250, "line": "Pushing down on me", "plugin": {}},
+        ])
+    );
+    n.stop().await;
+
+    let mut ordered = base.to_vec();
+    ordered.push(("WAVYZON_LYRICS_ORDER", "lyricsovh,lrclib"));
+    let n = start(&ordered).await;
+    let url = n.url(&format!("/v4/lyrics?track={}", song("Queen", "Under Pressure")));
+    let (status, body) = call(Method::GET, &url, None).await;
+    assert_eq!(status, 200, "{body}");
+    assert_eq!(body["provider"], "lyrics.ovh");
+    assert_eq!(body["lines"], json!([]));
     n.stop().await;
 }
 

@@ -71,7 +71,7 @@ team.
 ### 🔍 **Sources**
 
 - **SoundCloud** search, links and playback
-- **Lyrics** from Genius, then lyrics.ovh, through Lavalink's LavaLyrics API
+- **Lyrics** from Genius, LRCLIB (**synced**, timed lines) and lyrics.ovh, in the order you choose (`WAVYZON_LYRICS_ORDER`), through Lavalink's LavaLyrics API
 - **Deezer** search, links and playback (`DEEZER_ARL` + `DEEZER_MASTER_KEY`), Range-based seeking
 - **HTTP**: direct MP3 / AAC / M4A / FLAC / Ogg / WAV links and **Icecast / Shoutcast radio**, Range-based seeking, private addresses blocked by default
 - **Local files** (opt-in, sandboxed in `WAVYZON_LOCAL_ROOT`)
@@ -91,7 +91,7 @@ team.
 - A complete, tested [example plugin](plugins/wavyzon-plugin-example) (sine-tone source, bitcrush filter, event counter, stats route)
 - [Equalizer APO plugin](plugins/wavyzon-plugin-apo): play through APO configs and presets (parametric EQ, GraphicEQ, convolution, reverb) with `pluginFilters.apo`
 - [Flowery TTS plugin](plugins/wavyzon-plugin-flowery): text-to-speech with LavaSrc's `ftts://` identifiers, so lavalink-client's `source: "ftts"` works (on by default, no API key)
-- [Genius lyrics plugin](plugins/wavyzon-plugin-genius): lyrics from Genius, lyrics.ovh when Genius has none (on by default; `WAVYZON_PLUGIN_GENIUS_ACCESS_TOKEN` recommended)
+- [Genius lyrics plugin](plugins/wavyzon-plugin-genius): lyrics from Genius, the next provider when Genius has none (on by default; `WAVYZON_PLUGIN_GENIUS_ACCESS_TOKEN` recommended)
 
 ### 🔁 **Operations**
 
@@ -147,8 +147,9 @@ and the [full reference](docs/src/configuration.md).
 | `WAVYZON_ADDRESS` | `0.0.0.0:2333` | Listen address |
 | `WAVYZON_PLAYBACK_SOURCES` | `deezer,soundcloud` | Where Spotify / Apple Music tracks are mirrored to, in order |
 | `DEEZER_ARL` + `DEEZER_MASTER_KEY` | | Enable Deezer streaming (account ARL cookie and 16-byte stream cipher key) |
-| `LYRICS_ENABLED` | `true` | Lyrics from lyrics.ovh on `/v4/lyrics` (LavaLyrics API), after Genius |
-| `WAVYZON_PLUGIN_GENIUS_ACCESS_TOKEN` | | Genius Client Access Token; Genius is asked before lyrics.ovh (`WAVYZON_PLUGIN_GENIUS_ENABLED=false` to skip it) |
+| `WAVYZON_LYRICS_ORDER` | `lrclib,lyricsovh,genius` | Lyrics providers on `/v4/lyrics` (LavaLyrics API), first answer wins |
+| `LRCLIB_ENABLED`, `LYRICS_ENABLED` | `true` | LRCLIB (synced lyrics) and lyrics.ovh |
+| `WAVYZON_PLUGIN_GENIUS_ACCESS_TOKEN` | | Genius Client Access Token (`WAVYZON_PLUGIN_GENIUS_ENABLED=false` to skip Genius) |
 | `WAVYZON_HTTP_ALLOW_PRIVATE` | `false` | Let the HTTP source fetch private / local addresses |
 | `WAVYZON_LOCAL_ROOT` | off | Directory the local-file source may read |
 | `WAVYZON_PLUGINS` | all compiled in | Plugins to enable, comma-separated |

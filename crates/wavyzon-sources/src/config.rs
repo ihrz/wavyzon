@@ -8,6 +8,9 @@ use std::time::Duration;
 
 use crate::http_source::HttpSourceConfig;
 
+/// Default of `WAVYZON_LYRICS_ORDER`.
+pub const DEFAULT_LYRICS_ORDER: &str = "lrclib,lyricsovh,genius";
+
 fn list(raw: &str) -> Vec<String> {
     raw.split(',')
         .map(|s| s.trim().to_ascii_lowercase())
@@ -159,6 +162,28 @@ impl Default for LyricsConfig {
     }
 }
 
+/// Lyrics from LRCLIB, synced when it has them (served by the node's
+/// `/v4/lyrics`).
+#[derive(Debug, Clone)]
+pub struct LrclibConfig {
+    /// `LRCLIB_ENABLED` (default `true`).
+    pub enabled: bool,
+    /// `LRCLIB_API_URL` (default `https://lrclib.net/api`); for a mirror or tests.
+    pub api_url: String,
+    /// `LRCLIB_PROXY`.
+    pub proxy: Option<String>,
+}
+
+impl Default for LrclibConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            api_url: crate::lrclib::DEFAULT_API.into(),
+            proxy: None,
+        }
+    }
+}
+
 /// Local files.
 #[derive(Debug, Clone, Default)]
 pub struct LocalConfig {
@@ -197,6 +222,12 @@ pub struct SourcesConfig {
     pub http: HttpSourceConfig,
     pub local: LocalConfig,
     pub lyrics: LyricsConfig,
+    pub lrclib: LrclibConfig,
+    /// `WAVYZON_LYRICS_ORDER` (default `lrclib,lyricsovh,genius`): lyrics
+    /// providers asked in order, first answer wins. Names ignore case and
+    /// punctuation (`lyrics.ovh` = `lyricsovh`). Enabled providers not listed
+    /// are asked after the listed ones.
+    pub lyrics_order: Vec<String>,
 }
 
 impl Default for SourcesConfig {
@@ -214,6 +245,8 @@ impl Default for SourcesConfig {
             http: HttpSourceConfig::default(),
             local: LocalConfig::default(),
             lyrics: LyricsConfig::default(),
+            lrclib: LrclibConfig::default(),
+            lyrics_order: list(DEFAULT_LYRICS_ORDER),
         }
     }
 }
@@ -271,6 +304,14 @@ impl SourcesConfig {
             c.lyrics.api_url = url;
         }
         c.lyrics.proxy = s("LYRICS_PROXY");
+        c.lrclib.enabled = flag("LRCLIB_ENABLED", true);
+        if let Some(url) = s("LRCLIB_API_URL") {
+            c.lrclib.api_url = url;
+        }
+        c.lrclib.proxy = s("LRCLIB_PROXY");
+        if let Some(v) = s("WAVYZON_LYRICS_ORDER") {
+            c.lyrics_order = list(&v);
+        }
         let enabled = if s("WAVYZON_HTTP_SOURCE").is_some() {
             "WAVYZON_HTTP_SOURCE"
         } else {
@@ -337,9 +378,13 @@ mod tests {
         let d = SourcesConfig::default();
         assert_eq!(d.search_order, ["deezer", "applemusic", "spotify", "soundcloud"]);
         assert_eq!(d.playback_order, ["deezer", "soundcloud"]);
+        assert_eq!(d.lyrics_order, ["lrclib", "lyricsovh", "genius"]);
+        assert!(d.lrclib.enabled);
         assert!(d.http.block_private);
         let env: HashMap<&str, &str> = [
             ("WAVYZON_SEARCH_ORDER", "Deezer, soundcloud"),
+            ("WAVYZON_LYRICS_ORDER", "LRCLIB, lyrics.ovh ,genius"),
+            ("LRCLIB_ENABLED", "off"),
             ("WAVYZON_AUDIO_CACHE_GB", "5000"),
             ("HTTP_SOURCE_BLOCK_PRIVATE", "false"),
             ("SOUNDCLOUD_ENABLED", "0"),
@@ -349,6 +394,8 @@ mod tests {
         .into();
         let c = SourcesConfig::from_lookup(|k| env.get(k).map(|v| v.to_string()));
         assert_eq!(c.search_order, ["deezer", "soundcloud"]);
+        assert_eq!(c.lyrics_order, ["lrclib", "lyrics.ovh", "genius"]);
+        assert!(!c.lrclib.enabled);
         assert_eq!(c.audio_cache_gb, 1000);
         assert!(!c.http.block_private);
         assert!(!c.soundcloud.enabled);

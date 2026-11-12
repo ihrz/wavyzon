@@ -109,7 +109,7 @@ What the node can do.
 | `plugins` | Loaded plugins (same as [`GET /v1/plugins`](#get-v1plugins)) |
 | `analysis` | Version of the track analysis format |
 | `wireClock` | Positions are measured at the socket (always `true`) |
-| `lyrics` | [Lyrics](#lyrics) are served (Genius plugin or `LYRICS_ENABLED`) |
+| `lyrics` | [Lyrics](#lyrics) are served (at least one provider enabled) |
 
 `pluginFilters` and `plugins` are new in Wavyzon.
 
@@ -534,14 +534,20 @@ full.
 
 ## Lyrics
 
-Plain-text lyrics, in the response shape of Lavalink's LavaLyrics plugin
-(so Lavalink clients can read them, see [Lavalink compatibility](../lavalink.md)).
-Both routes also exist under `/v4`.
+Lyrics, in the response shape of Lavalink's LavaLyrics plugin (so Lavalink
+clients can read them, see [Lavalink compatibility](../lavalink.md)). Both
+routes also exist under `/v4`.
 
-Providers are asked in order and the first that has lyrics answers:
-[Genius](../genius-lyrics.md) (plugin, on by default), then
-[lyrics.ovh](https://lyrics.ovh) (`LYRICS_ENABLED`). Genius off: lyrics.ovh
-directly. Both off: the routes answer `404`. `provider` says which one answered.
+Providers are asked in `WAVYZON_LYRICS_ORDER` (default
+`lrclib,lyricsovh,genius`) and the first that has lyrics answers:
+
+| Provider | `provider` | Timed `lines` | Off with |
+| --- | --- | --- | --- |
+| [LRCLIB](https://lrclib.net) | `lrclib.net` | when LRCLIB has synced lyrics | `LRCLIB_ENABLED=false` |
+| [lyrics.ovh](https://lyrics.ovh) | `lyrics.ovh` | no | `LYRICS_ENABLED=false` |
+| [Genius](../genius-lyrics.md) (plugin) | `genius.com` | no | `WAVYZON_PLUGIN_GENIUS_ENABLED=false` |
+
+All off: the routes answer `404`.
 
 ### `GET /v1/lyrics?track=…`
 
@@ -551,17 +557,27 @@ its artist and title.
 ```json
 {
   "sourceName": "deezer",
-  "provider": "lyrics.ovh",
-  "text": "Pressure\nPushing down on me\n…",
-  "lines": [],
+  "provider": "lrclib.net",
+  "text": "Pressure, pushing down on me\n…",
+  "lines": [
+    { "timestamp": 30770, "duration": 3740, "line": "Pressure, pushing down on me", "plugin": {} },
+    { "timestamp": 34510, "duration": 4170, "line": "Pressing down on you, no man ask for", "plugin": {} }
+  ],
   "plugin": {}
 }
 ```
 
 `204` when no provider has lyrics, `400` without `track`, `404` when lyrics
 are disabled, `502` when every provider failed (a provider that fails is
-skipped: Genius down still gets lyrics.ovh's answer). `lines` is always
-empty: neither provider gives timed lyrics.
+skipped: one down still gets the next provider's answer). `lines` holds
+timed lines (ms from the start of the track; a line lasts until the next
+one) when LRCLIB answered with synced lyrics, and is empty otherwise.
+
+LRCLIB: the track's artist, title and duration are asked first (LRCLIB
+matches durations within ±2 s), then a search with the cleaned title and
+first artist, keeping a record with the same title and artist within 3 s of
+the track's duration, synced first. Answers are cached for 7 days, misses
+for 6 hours (per recording length).
 
 lyrics.ovh: the track's own artist and title are tried first, then once more cleaned up
 (first credited artist, title without `(feat. …)`, `- Remastered 2011`,
