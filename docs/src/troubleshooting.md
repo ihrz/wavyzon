@@ -156,6 +156,7 @@ cargo build --release -p wavyzon --bin livecheck
 ./target/release/livecheck -bench "q one" "q two"   # search / open / first-audio latency
 ./target/release/livecheck -seek                 # seeks compared with a full decode
 ./target/release/livecheck -rec "dzsearch:m83"   # recommendations for the first result
+./target/release/livecheck -lyrics "Queen - Under Pressure"   # lyrics chain: which provider answers
 ```
 
 It exits non-zero, with the reason, when something fails (nothing found, no

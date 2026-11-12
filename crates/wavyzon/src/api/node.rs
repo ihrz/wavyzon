@@ -20,7 +20,7 @@ pub(super) async fn info(State(api): St) -> Response {
         "mixing": true,
         "analysis": ANALYSIS_VERSION,
         "wireClock": true,
-        "lyrics": api.sources.lyrics().is_some(),
+        "lyrics": api.sources.lyrics_enabled(),
     }))
 }
 

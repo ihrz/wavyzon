@@ -98,8 +98,9 @@ WAVYZON_PASSWORD=change-me WAVYZON_PLUGINS=example ./target/release/wavyzon
 
 Each plugin is a `plugin-<name>` cargo feature of the `wavyzon` crate;
 `plugin-example`, `plugin-apo` (Equalizer APO configurations, see
-[Equalizer APO](apo.md)) and `plugin-flowery` (text-to-speech, see
-[Flowery TTS](flowery-tts.md)) are on by default
+[Equalizer APO](apo.md)), `plugin-flowery` (text-to-speech, see
+[Flowery TTS](flowery-tts.md)) and `plugin-genius` (lyrics, see
+[Genius lyrics](genius-lyrics.md)) are on by default
 (`--no-default-features` builds a node with no plugins).
 
 ### Running the tests

@@ -72,7 +72,7 @@ le nœud audio en Go derrière *greed*, par l'équipe [iHorizon](https://gitlab.
 ### 🔍 **Sources**
 
 - **SoundCloud** : recherche, liens et lecture
-- **Paroles** depuis lyrics.ovh, via l'API LavaLyrics de Lavalink
+- **Paroles** depuis Genius, puis lyrics.ovh, via l'API LavaLyrics de Lavalink
 - **Deezer** : recherche, liens et lecture (`DEEZER_ARL` + `DEEZER_MASTER_KEY`), sauts via `Range`
 - **HTTP** : liens directs MP3 / AAC / M4A / FLAC / Ogg / WAV et **radios Icecast / Shoutcast**, sauts via `Range`, adresses privées bloquées par défaut
 - **Fichiers locaux** (optionnels, confinés à `WAVYZON_LOCAL_ROOT`)
@@ -92,6 +92,7 @@ le nœud audio en Go derrière *greed*, par l'équipe [iHorizon](https://gitlab.
 - Un [plugin d'exemple](plugins/wavyzon-plugin-example) complet et testé (source de sinusoïde, filtre bitcrush, compteur d'événements, route de statistiques)
 - [Plugin Equalizer APO](plugins/wavyzon-plugin-apo) : lecture à travers des configs et presets APO (EQ paramétrique, GraphicEQ, convolution, reverb) avec `pluginFilters.apo`
 - [Plugin Flowery TTS](plugins/wavyzon-plugin-flowery) : synthèse vocale avec les identifiants `ftts://` de LavaSrc, pour que `source: "ftts"` de lavalink-client fonctionne (activé par défaut, sans clé d'API)
+- [Plugin Genius](plugins/wavyzon-plugin-genius) : paroles depuis Genius, lyrics.ovh quand Genius n'en a pas (activé par défaut ; `WAVYZON_PLUGIN_GENIUS_ACCESS_TOKEN` recommandé)
 
 ### 🔁 **Exploitation**
 
@@ -147,7 +148,8 @@ et la [référence complète](docs/src/configuration.md) (en anglais).
 | `WAVYZON_ADDRESS` | `0.0.0.0:2333` | Adresse d'écoute |
 | `WAVYZON_PLAYBACK_SOURCES` | `deezer,soundcloud` | Où les pistes Spotify / Apple Music sont mises en miroir, par ordre de préférence |
 | `DEEZER_ARL` + `DEEZER_MASTER_KEY` | | Activer la lecture Deezer (cookie ARL de compte et clé Blowfish de 16 octets) |
-| `LYRICS_ENABLED` | `true` | Paroles depuis lyrics.ovh sur `/v4/lyrics` (API LavaLyrics) |
+| `LYRICS_ENABLED` | `true` | Paroles depuis lyrics.ovh sur `/v4/lyrics` (API LavaLyrics), après Genius |
+| `WAVYZON_PLUGIN_GENIUS_ACCESS_TOKEN` | | Client Access Token Genius ; Genius est interrogé avant lyrics.ovh (`WAVYZON_PLUGIN_GENIUS_ENABLED=false` pour s'en passer) |
 | `WAVYZON_HTTP_ALLOW_PRIVATE` | `false` | Autoriser la source HTTP à joindre des adresses privées / locales |
 | `WAVYZON_LOCAL_ROOT` | désactivé | Dossier que la source de fichiers locaux peut lire |
 | `WAVYZON_PLUGINS` | tous ceux compilés | Plugins à activer, séparés par des virgules |

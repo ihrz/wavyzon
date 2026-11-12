@@ -109,6 +109,9 @@ async fn info_lists_plugins_sources_and_filters() {
     if cfg!(feature = "plugin-flowery") {
         want.push("flowery");
     }
+    if cfg!(feature = "plugin-genius") {
+        want.push("genius");
+    }
     assert_eq!(names, want);
     let (status, plugins) = call(Method::GET, &n.url("/v1/plugins"), None).await;
     assert_eq!(status, 200);
@@ -751,8 +754,11 @@ async fn metrics_are_exposed() {
             .starts_with("text/plain")
     );
     let text = res.text().await.unwrap();
-    // testkit + example, + apo and flowery when compiled in
-    let count = 2 + usize::from(cfg!(feature = "plugin-apo")) + usize::from(cfg!(feature = "plugin-flowery"));
+    // testkit + example, + apo, flowery and genius when compiled in
+    let count = 2
+        + usize::from(cfg!(feature = "plugin-apo"))
+        + usize::from(cfg!(feature = "plugin-flowery"))
+        + usize::from(cfg!(feature = "plugin-genius"));
     let plugins = format!("wavyzon_plugins {count}");
     for needle in [
         "# TYPE wavyzon_players gauge",
@@ -845,12 +851,94 @@ async fn lyrics_follow_the_lavalyrics_api() {
         metrics.contains("wavyzon_lyrics_total{outcome=\"cached\"} 1"),
         "{metrics}"
     );
+    // Genius (on by default) sits on a closed port here: every lookup failed
+    // there first, then lyrics.ovh answered.
+    if cfg!(feature = "plugin-genius") {
+        assert!(
+            !metrics.contains("wavyzon_lyrics_plugin_total{outcome=\"failed\"} 0"),
+            "{metrics}"
+        );
+    }
+    n.stop().await;
+}
+
+/// A fake Genius: public search under `/web/api/search/song`, one song page.
+#[cfg(feature = "plugin-genius")]
+async fn fake_genius() -> String {
+    use axum::extract::Query;
+    use std::collections::HashMap;
+    let app = axum::Router::new()
+        .route(
+            "/web/api/search/song",
+            axum::routing::get(|Query(q): Query<HashMap<String, String>>| async move {
+                let hits = if q["q"].contains("Under Pressure") {
+                    json!([{"result": {"title": "Under Pressure", "primary_artist": {"name": "Queen & David Bowie"},
+                        "path": "/Queen-and-david-bowie-under-pressure-lyrics", "lyrics_state": "complete"}}])
+                } else {
+                    json!([])
+                };
+                axum::Json(json!({"response": {"sections": [{"type": "song", "hits": hits}]}}))
+            }),
+        )
+        .route(
+            "/web/Queen-and-david-bowie-under-pressure-lyrics",
+            axum::routing::get(|| async {
+                r#"<html><div data-lyrics-container="true">[Intro]<br/>Mm ba ba de<br/><i>Pressure</i></div></html>"#
+            }),
+        );
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let base = format!("http://{}/web", listener.local_addr().unwrap());
+    tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+    base
+}
+
+/// Genius on: Genius first, lyrics.ovh when Genius has nothing; with
+/// lyrics.ovh off, Genius alone still serves lyrics.
+#[cfg(feature = "plugin-genius")]
+#[tokio::test]
+async fn lyrics_ask_genius_first() {
+    let ovh = fake_lyrics().await;
+    let genius = fake_genius().await;
+    let n = start(&[
+        ("LYRICS_ENABLED", "true"),
+        ("LYRICS_API_URL", &ovh),
+        ("WAVYZON_PLUGIN_GENIUS_WEB_URL", &genius),
+    ])
+    .await;
+    let url = n.url(&format!("/v4/lyrics?track={}", song("Queen", "Under Pressure")));
+    let (status, body) = call(Method::GET, &url, None).await;
+    assert_eq!(status, 200, "{body}");
+    assert_eq!(body["provider"], "genius.com");
+    assert_eq!(body["text"], "[Intro]\nMm ba ba de\nPressure");
+    // Genius misses this one; lyrics.ovh has nothing either.
+    let url = n.url(&format!("/v4/lyrics?track={}", song("Nobody", "Nothing")));
+    let (status, _) = call(Method::GET, &url, None).await;
+    assert_eq!(status, 204);
+    let (_, metrics) = call(Method::GET, &n.url("/metrics"), None).await;
+    let metrics = metrics.as_str().unwrap().to_string();
+    for needle in [
+        "wavyzon_lyrics_plugin_total{outcome=\"found\"} 1",
+        "wavyzon_lyrics_plugin_total{outcome=\"not_found\"} 1",
+        "wavyzon_lyrics_total{outcome=\"not_found\"} 1",
+    ] {
+        assert!(metrics.contains(needle), "missing {needle} in\n{metrics}");
+    }
+    n.stop().await;
+
+    let n = start(&[("WAVYZON_PLUGIN_GENIUS_WEB_URL", &genius)]).await;
+    let url = n.url(&format!("/v1/lyrics?track={}", song("Queen", "Under Pressure")));
+    let (status, body) = call(Method::GET, &url, None).await;
+    assert_eq!(status, 200, "{body}");
+    assert_eq!(body["provider"], "genius.com");
+    let url = n.url(&format!("/v1/lyrics?track={}", song("Nobody", "Nothing")));
+    assert_eq!(call(Method::GET, &url, None).await.0, 204);
     n.stop().await;
 }
 
 #[tokio::test]
 async fn lyrics_can_be_disabled() {
-    let n = start(&[]).await;
+    // lyrics.ovh is off in tests; Genius is turned off too.
+    let n = start(&[("WAVYZON_PLUGIN_GENIUS_ENABLED", "false")]).await;
     let url = n.url(&format!("/v4/lyrics?track={}", song("Queen", "Under Pressure")));
     let (status, body) = call(Method::GET, &url, None).await;
     assert_eq!(status, 404, "{body}");

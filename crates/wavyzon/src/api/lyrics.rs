@@ -1,9 +1,10 @@
 //! Lyrics, in the shape of Lavalink's LavaLyrics plugin API so Lavalink
-//! clients can read them (not in Cadence). Served from lyrics.ovh through
-//! [`wavyzon_sources::lyrics::LyricsClient`].
+//! clients can read them (not in Cadence). Served by
+//! [`wavyzon_sources::Sources::lyrics`]: plugin providers first (Genius),
+//! then lyrics.ovh.
 //!
 //! `200` with the lyrics, `204` when there are none, `404` when lyrics are
-//! disabled or nothing is playing, `502` when lyrics.ovh failed.
+//! disabled or nothing is playing, `502` when every provider failed.
 
 use std::collections::HashMap;
 
@@ -20,7 +21,7 @@ use super::{Api, ApiError, ApiResult, St, no_content, ok_json};
 pub const PLUGIN_NAME: &str = "lavalyrics-plugin";
 
 /// `GET /v{1,4}/lyrics?track=<encoded>` (`encodedTrack` is accepted too;
-/// LavaLyrics' `skipTrackSource` is ignored: there is one provider).
+/// LavaLyrics' `skipTrackSource` is ignored: no provider reads the track's source).
 pub(super) async fn by_track(State(api): St, Query(q): Query<HashMap<String, String>>) -> ApiResult {
     let encoded = q
         .get("track")
@@ -44,10 +45,10 @@ pub(super) async fn current(State(api): St, Path((session, guild)): Path<(String
 }
 
 async fn lyrics_of(api: &Api, track: &Track) -> ApiResult {
-    let Some(client) = api.sources.lyrics() else {
+    if !api.sources.lyrics_enabled() {
         return Err(ApiError::not_found("lyrics are disabled on this node"));
-    };
-    match client.get(track).await {
+    }
+    match api.sources.lyrics(track).await {
         Ok(Some(l)) => Ok(ok_json(json!({
             "sourceName": track.source,
             "provider": l.provider,

@@ -42,7 +42,7 @@ use parking_lot::Mutex;
 use sha2::{Digest, Sha256};
 use tokio::io::AsyncReadExt;
 use tokio::sync::Semaphore;
-use wavyzon_plugin::{Failure, Format, LoadResult, LoadType, Source, Stream, Track};
+use wavyzon_plugin::{Failure, Format, LoadResult, LoadType, Lyrics, LyricsProvider, Source, Stream, Track};
 
 use crate::audiocache::Store;
 use crate::cache::Lru;
@@ -101,7 +101,10 @@ struct Inner {
     warm_slots: Arc<Semaphore>,
     heads: Lru<String, Arc<Head>>,
     disk: Option<DiskCache>,
-    lyrics: Option<Arc<LyricsClient>>,
+    /// Plugin providers first, lyrics.ovh last.
+    lyrics: Vec<Arc<dyn LyricsProvider>>,
+    /// How many of `lyrics` come from plugins (counted in `lyrics_plugin_total`).
+    lyrics_plugins: usize,
     metrics: Arc<Metrics>,
 }
 
@@ -115,6 +118,7 @@ pub struct SourcesBuilder {
     prefetch_on_load: bool,
     audio_cache: Option<Arc<Store>>,
     lyrics: Option<Arc<LyricsClient>>,
+    lyrics_plugins: Vec<Arc<dyn LyricsProvider>>,
     metrics: Arc<Metrics>,
 }
 
@@ -130,6 +134,7 @@ impl SourcesBuilder {
             prefetch_on_load: false,
             audio_cache: None,
             lyrics: None,
+            lyrics_plugins: vec![],
             metrics: Arc::new(Metrics::default()),
         }
     }
@@ -176,9 +181,16 @@ impl SourcesBuilder {
         self
     }
 
-    /// Serve lyrics through this client (unset: lyrics are off).
+    /// Serve lyrics through this lyrics.ovh client, after any plugin
+    /// provider (no client and no provider: lyrics are off).
     pub fn lyrics(mut self, client: Arc<LyricsClient>) -> Self {
         self.lyrics = Some(client);
+        self
+    }
+
+    /// Lyrics providers registered by plugins, asked in order before lyrics.ovh.
+    pub fn lyrics_providers(mut self, it: impl IntoIterator<Item = Arc<dyn LyricsProvider>>) -> Self {
+        self.lyrics_plugins.extend(it);
         self
     }
 
@@ -220,7 +232,13 @@ impl SourcesBuilder {
                 playback.push(s.clone());
             }
         }
+        let lyrics_plugins = self.lyrics_plugins.len();
+        let mut lyrics = self.lyrics_plugins;
+        if let Some(ovh) = self.lyrics {
+            lyrics.push(ovh);
+        }
         tracing::info!(
+            lyrics = ?lyrics.iter().map(|p| p.name().to_string()).collect::<Vec<_>>(),
             sources = ?ordered.iter().map(|s| s.name()).collect::<Vec<_>>(),
             playback = ?playback.iter().map(|s| s.name()).collect::<Vec<_>>(),
             "sources ready"
@@ -242,7 +260,8 @@ impl SourcesBuilder {
                 store,
                 plays: Lru::new(PLAY_ENTRIES, PLAY_WINDOW),
             }),
-            lyrics: self.lyrics,
+            lyrics,
+            lyrics_plugins,
             metrics: self.metrics,
         }))
     }
@@ -305,9 +324,52 @@ impl Sources {
         self.0.metrics.clone()
     }
 
-    /// The lyrics client, unless lyrics are disabled.
-    pub fn lyrics(&self) -> Option<&LyricsClient> {
-        self.0.lyrics.as_deref()
+    /// Whether any lyrics provider is configured (plugins or lyrics.ovh).
+    pub fn lyrics_enabled(&self) -> bool {
+        !self.0.lyrics.is_empty()
+    }
+
+    /// Names of the lyrics providers, in the order they are asked.
+    pub fn lyrics_providers(&self) -> Vec<String> {
+        self.0.lyrics.iter().map(|p| p.name().to_string()).collect()
+    }
+
+    /// Lyrics of `track` from the first provider that has them: plugin
+    /// providers (Genius) in order, then lyrics.ovh. A provider that fails
+    /// is logged and skipped. `Ok(None)` when at least one provider answered
+    /// and none had lyrics; the last error when every provider failed.
+    pub async fn lyrics(&self, track: &Track) -> Result<Option<Lyrics>, Failure> {
+        let mut failure = None;
+        let mut answered = false;
+        for (i, p) in self.0.lyrics.iter().enumerate() {
+            let plugin = i < self.0.lyrics_plugins;
+            match p.lyrics(track).await {
+                Ok(Some(found)) => {
+                    if plugin {
+                        inc(&self.0.metrics.lyrics_plugins.found);
+                    }
+                    return Ok(Some(found));
+                }
+                Ok(None) => {
+                    answered = true;
+                    if plugin {
+                        inc(&self.0.metrics.lyrics_plugins.not_found);
+                        tracing::debug!(provider = p.name(), "no lyrics, asking the next provider");
+                    }
+                }
+                Err(e) => {
+                    if plugin {
+                        inc(&self.0.metrics.lyrics_plugins.failed);
+                        tracing::warn!(provider = p.name(), error = %e, "lyrics provider failed, asking the next one");
+                    }
+                    failure = Some(e);
+                }
+            }
+        }
+        match failure {
+            Some(e) if !answered => Err(e),
+            _ => Ok(None),
+        }
     }
 
     /// The disk audio cache, if configured.
@@ -1289,5 +1351,61 @@ mod tests {
         assert_eq!(err.severity, wavyzon_plugin::Severity::Fault);
         let enc = tr("mirror", "x", "a", "b", 0).encode();
         assert_eq!(r.decode(&enc).unwrap().identifier, "x");
+    }
+
+    /// A lyrics provider with a fixed answer: `Some(text)`, `None`, or failing.
+    struct FakeLyrics(&'static str, Option<Option<&'static str>>, AtomicU32);
+
+    #[async_trait]
+    impl LyricsProvider for FakeLyrics {
+        fn name(&self) -> &str {
+            self.0
+        }
+        async fn lyrics(&self, _: &Track) -> Result<Option<Lyrics>, Failure> {
+            self.2.fetch_add(1, Ordering::SeqCst);
+            match self.1 {
+                None => Err(Failure::common(self.0, "down", None)),
+                Some(found) => Ok(found.map(|t| Lyrics {
+                    text: t.into(),
+                    provider: self.0.to_string().leak(),
+                })),
+            }
+        }
+    }
+
+    fn chain(providers: &[&Arc<FakeLyrics>]) -> Sources {
+        SourcesBuilder::bare(vec![], vec![])
+            .lyrics_providers(providers.iter().map(|p| (*p).clone() as Arc<dyn LyricsProvider>))
+            .build()
+    }
+
+    #[tokio::test]
+    async fn lyrics_ask_providers_in_order_until_one_has_them() {
+        let t = tr("x", "1", "Song", "Artist", 0);
+        let genius = |a| Arc::new(FakeLyrics("genius", a, AtomicU32::new(0)));
+        let ovh = |a| Arc::new(FakeLyrics("ovh", a, AtomicU32::new(0)));
+
+        assert!(!chain(&[]).lyrics_enabled());
+
+        // First provider has them: the next one is never asked.
+        let (g, o) = (genius(Some(Some("from genius"))), ovh(Some(Some("from ovh"))));
+        let s = chain(&[&g, &o]);
+        assert_eq!(s.lyrics_providers(), ["genius", "ovh"]);
+        assert_eq!(s.lyrics(&t).await.unwrap().unwrap().provider, "genius");
+        assert_eq!(o.2.load(Ordering::SeqCst), 0);
+        assert_eq!(s.metrics().lyrics_plugins.found.load(Ordering::Relaxed), 1);
+
+        // None, or a failure, falls through to the next one.
+        for first in [Some(None), None] {
+            let (g, o) = (genius(first), ovh(Some(Some("from ovh"))));
+            assert_eq!(chain(&[&g, &o]).lyrics(&t).await.unwrap().unwrap().provider, "ovh");
+        }
+
+        // One failed, the other has none: no lyrics (204), not an error.
+        let (g, o) = (genius(None), ovh(Some(None)));
+        assert_eq!(chain(&[&g, &o]).lyrics(&t).await.unwrap(), None);
+        // Every provider failed: the error.
+        let (g, o) = (genius(None), ovh(None));
+        assert!(chain(&[&g, &o]).lyrics(&t).await.is_err());
     }
 }

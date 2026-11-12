@@ -16,6 +16,8 @@ pub fn compiled_in() -> Vec<Arc<dyn Plugin>> {
         wavyzon_plugin_apo::plugin(),
         #[cfg(feature = "plugin-flowery")]
         wavyzon_plugin_flowery::plugin(),
+        #[cfg(feature = "plugin-genius")]
+        wavyzon_plugin_genius::plugin(),
     ]
 }
 

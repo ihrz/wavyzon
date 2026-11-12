@@ -8,7 +8,7 @@ use async_trait::async_trait;
 use axum::Router;
 use serde::Serialize;
 
-use crate::{Event, FilterFactory, Source};
+use crate::{Event, FilterFactory, LyricsProvider, Source};
 
 /// Version of this API. The node refuses plugins built for another major.
 pub const API_VERSION: u32 = 1;
@@ -73,6 +73,7 @@ pub struct Registry {
     pub(crate) filters: Vec<Arc<dyn FilterFactory>>,
     pub(crate) listeners: Vec<Arc<dyn EventListener>>,
     pub(crate) routes: Vec<(String, Router)>,
+    pub(crate) lyrics: Vec<Arc<dyn LyricsProvider>>,
     current: Option<String>,
 }
 
@@ -100,6 +101,13 @@ impl Registry {
         self
     }
 
+    /// Add a lyrics provider, asked before the node's lyrics.ovh client
+    /// (providers of several plugins are asked in plugin order).
+    pub fn lyrics(&mut self, provider: Arc<dyn LyricsProvider>) -> &mut Self {
+        self.lyrics.push(provider);
+        self
+    }
+
     /// Mount `router` at `/v1/plugins/<plugin name>`. Requests are
     /// authenticated by the node before they reach it.
     pub fn routes(&mut self, router: Router) -> &mut Self {
@@ -121,6 +129,9 @@ impl Registry {
     }
     pub fn listeners(&self) -> &[Arc<dyn EventListener>] {
         &self.listeners
+    }
+    pub fn lyrics_providers(&self) -> &[Arc<dyn LyricsProvider>] {
+        &self.lyrics
     }
     /// Take the routers out (the server mounts them once).
     pub fn take_routes(&mut self) -> Vec<(String, Router)> {
@@ -151,7 +162,7 @@ impl Registry {
 pub trait Plugin: Send + Sync + 'static {
     fn manifest(&self) -> PluginManifest;
 
-    /// Register sources, filters, listeners and routes. Called once, in
+    /// Register sources, filters, listeners, lyrics providers and routes. Called once, in
     /// plugin order, before the server starts listening.
     async fn register(&self, ctx: &PluginContext, registry: &mut Registry) -> Result<(), PluginError>;
 

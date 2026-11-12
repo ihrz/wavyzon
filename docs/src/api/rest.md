@@ -109,7 +109,7 @@ What the node can do.
 | `plugins` | Loaded plugins (same as [`GET /v1/plugins`](#get-v1plugins)) |
 | `analysis` | Version of the track analysis format |
 | `wireClock` | Positions are measured at the socket (always `true`) |
-| `lyrics` | [Lyrics](#lyrics) are served (`LYRICS_ENABLED`) |
+| `lyrics` | [Lyrics](#lyrics) are served (Genius plugin or `LYRICS_ENABLED`) |
 
 `pluginFilters` and `plugins` are new in Wavyzon.
 
@@ -534,10 +534,14 @@ full.
 
 ## Lyrics
 
-Plain-text lyrics from [lyrics.ovh](https://lyrics.ovh), in the response
-shape of Lavalink's LavaLyrics plugin (so Lavalink clients can read them,
-see [Lavalink compatibility](../lavalink.md)). Both routes also exist under
-`/v4`. Off with `LYRICS_ENABLED=false`.
+Plain-text lyrics, in the response shape of Lavalink's LavaLyrics plugin
+(so Lavalink clients can read them, see [Lavalink compatibility](../lavalink.md)).
+Both routes also exist under `/v4`.
+
+Providers are asked in order and the first that has lyrics answers:
+[Genius](../genius-lyrics.md) (plugin, on by default), then
+[lyrics.ovh](https://lyrics.ovh) (`LYRICS_ENABLED`). Genius off: lyrics.ovh
+directly. Both off: the routes answer `404`. `provider` says which one answered.
 
 ### `GET /v1/lyrics?track=…`
 
@@ -554,11 +558,12 @@ its artist and title.
 }
 ```
 
-`204` when lyrics.ovh has none, `400` without `track`, `404` when lyrics are
-disabled, `502` when lyrics.ovh failed. `lines` is always empty: lyrics.ovh
-has no timed lyrics.
+`204` when no provider has lyrics, `400` without `track`, `404` when lyrics
+are disabled, `502` when every provider failed (a provider that fails is
+skipped: Genius down still gets lyrics.ovh's answer). `lines` is always
+empty: neither provider gives timed lyrics.
 
-The track's own artist and title are tried first, then once more cleaned up
+lyrics.ovh: the track's own artist and title are tried first, then once more cleaned up
 (first credited artist, title without `(feat. …)`, `- Remastered 2011`,
 `(Official Video)`…), both at once. Answers are cached for 7 days, misses
 for 6 hours. Expect about 5 s for a song lyrics.ovh does not know (it runs

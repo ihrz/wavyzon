@@ -8,6 +8,7 @@
 //! livecheck -bench q1 q2 …      search / open / first-audio latency per query
 //! livecheck -seek ["<query>"]   seeks vs a full decode (bit-exact after warm-up)
 //! livecheck -rec "<query>"      recommendations for the first result
+//! livecheck -lyrics "<artist> - <title>"   lyrics through the provider chain (Genius, lyrics.ovh)
 //! ```
 //!
 //! Reads the same environment as the node (`WAVYZON_PASSWORD` included).
@@ -33,6 +34,7 @@ async fn sources(cfg: &Config) -> anyhow::Result<Sources> {
     .await?;
     Ok(Sources::builder(&cfg.sources)?
         .plugins(loaded.registry.sources().iter().cloned())
+        .lyrics_providers(loaded.registry.lyrics_providers().iter().cloned())
         .build())
 }
 
@@ -230,6 +232,31 @@ async fn recommend(s: &Sources, query: &str) -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Each provider on its own, then the chain the node serves.
+async fn lyrics(s: &Sources, query: &str) -> anyhow::Result<()> {
+    let (author, title) = query.split_once(" - ").context("expected \"<artist> - <title>\"")?;
+    let track = Track {
+        author: author.trim().into(),
+        title: title.trim().into(),
+        ..Default::default()
+    };
+    if !s.lyrics_enabled() {
+        bail!("no lyrics provider is enabled");
+    }
+    println!("providers: {}", s.lyrics_providers().join(" → "));
+    let start = Instant::now();
+    let got = s.lyrics(&track).await.context("lyrics")?;
+    let Some(l) = got else {
+        bail!("no lyrics for {author} - {title} ({:?})", start.elapsed());
+    };
+    let lines: Vec<&str> = l.text.lines().collect();
+    println!("{} lines from {} in {:?}:", lines.len(), l.provider, start.elapsed());
+    for line in lines.iter().take(12) {
+        println!("  {line}");
+    }
+    Ok(())
+}
+
 async fn run() -> anyhow::Result<()> {
     let cfg = Config::from_env()?;
     let s = sources(&cfg).await?;
@@ -240,6 +267,7 @@ async fn run() -> anyhow::Result<()> {
             Some("-bench") => bench(&s, &args[1..]).await,
             Some("-seek") => seek(&s, &rest(1)).await,
             Some("-rec") => recommend(&s, &rest(1)).await,
+            Some("-lyrics") => lyrics(&s, &rest(1)).await,
             Some(q) => check(&s, q).await,
             None => check(&s, DEFAULT_QUERY).await,
         }

@@ -3303,6 +3303,7 @@ dependencies = [
  "wavyzon-plugin-apo",
  "wavyzon-plugin-example",
  "wavyzon-plugin-flowery",
+ "wavyzon-plugin-genius",
  "wavyzon-sources",
  "wavyzon-testkit",
  "wavyzon-voice",
@@ -3393,6 +3394,20 @@ dependencies = [
 name = "wavyzon-plugin-flowery"
 version = "0.1.0"
 dependencies = [
+ "tokio",
+ "tracing",
+ "url",
+ "wavyzon-plugin",
+ "wavyzon-sources",
+]
+
+[[package]]
+name = "wavyzon-plugin-genius"
+version = "0.1.0"
+dependencies = [
+ "reqwest",
+ "serde",
+ "serde_json",
  "tokio",
  "tracing",
  "url",

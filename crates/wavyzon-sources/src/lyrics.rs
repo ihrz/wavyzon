@@ -8,13 +8,17 @@
 //!
 //! Not in Cadence: Wavyzon serves them through the LavaLyrics API shape so
 //! Lavalink clients can read them (see the node's `/v4/lyrics`).
+//!
+//! lyrics.ovh is the last provider of [`crate::Sources::lyrics`]: plugin
+//! providers (Genius) are asked first, and it answers when they have nothing.
 
 use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 
 use regex::Regex;
 use serde::Deserialize;
-use wavyzon_plugin::{Failure, Track};
+pub use wavyzon_plugin::Lyrics;
+use wavyzon_plugin::{Failure, LyricsProvider, Track, async_trait};
 
 use crate::cache::Lru;
 use crate::httpx::{HttpClient, HttpError};
@@ -35,13 +39,6 @@ const FOUND_TTL: Duration = Duration::from_secs(7 * 24 * 3600);
 const MISSING_TTL: Duration = Duration::from_secs(6 * 3600);
 /// lyrics.ovh is slow at times: never hold a request longer than this.
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(8);
-
-/// Lyrics of one track.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Lyrics {
-    pub text: Arc<str>,
-    pub provider: &'static str,
-}
 
 /// The lyrics.ovh client with its caches.
 pub struct LyricsClient {
@@ -200,6 +197,17 @@ impl LyricsClient {
             text: text.into(),
             provider: PROVIDER,
         }))
+    }
+}
+
+#[async_trait]
+impl LyricsProvider for LyricsClient {
+    fn name(&self) -> &str {
+        PROVIDER
+    }
+
+    async fn lyrics(&self, track: &Track) -> Result<Option<Lyrics>, Failure> {
+        self.get(track).await
     }
 }
 

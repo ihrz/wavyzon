@@ -120,10 +120,40 @@ pub fn config(dir: &TempDir, extra: &[(&str, &str)]) -> Config {
     Config::load(&move |k| env.get(k).cloned()).unwrap()
 }
 
-pub fn test_plugins(tone: Arc<ToneSource>) -> Vec<Arc<dyn Plugin>> {
+pub fn test_plugins(tone: Arc<ToneSource>, extra: &[(&str, &str)]) -> Vec<Arc<dyn Plugin>> {
     let mut v: Vec<Arc<dyn Plugin>> = vec![Arc::new(TestSources { tone })];
-    v.extend(wavyzon::plugins::compiled_in());
+    v.extend(wavyzon::plugins::compiled_in().into_iter().map(|p| hermetic(p, extra)));
     v
+}
+
+/// Compiled-in plugins that would reach the internet, kept local. Genius is
+/// on by default and asked before lyrics.ovh: unless a test points
+/// `WAVYZON_PLUGIN_GENIUS_API_URL`/`_WEB_URL` (in `extra`) at a fake, it
+/// gets a closed port, so lyrics tests also cover "Genius fails, lyrics.ovh
+/// answers". Plugins read the process environment, which tests leave alone.
+// The early return and `extra` are only used with the feature.
+#[cfg_attr(not(feature = "plugin-genius"), allow(unused_variables))]
+#[allow(clippy::needless_return)]
+fn hermetic(p: Arc<dyn Plugin>, extra: &[(&str, &str)]) -> Arc<dyn Plugin> {
+    #[cfg(feature = "plugin-genius")]
+    if p.manifest().name == wavyzon_plugin_genius::NAME {
+        let mut env: HashMap<String, String> = [
+            ("api_url", "http://127.0.0.1:9"),
+            ("web_url", "http://127.0.0.1:9"),
+            ("timeout_ms", "3000"),
+        ]
+        .iter()
+        .map(|(k, v)| (k.to_string(), v.to_string()))
+        .collect();
+        for (k, v) in extra {
+            if let Some(key) = k.strip_prefix("WAVYZON_PLUGIN_GENIUS_") {
+                env.insert(key.to_ascii_lowercase(), v.to_string());
+            }
+        }
+        let settings = wavyzon_plugin_genius::Settings::from_lookup(|k| env.get(k).cloned()).unwrap();
+        return Arc::new(wavyzon_plugin_genius::GeniusPlugin::with_settings(settings));
+    }
+    p
 }
 
 pub async fn start(extra: &[(&str, &str)]) -> TestNode {
@@ -136,7 +166,7 @@ pub async fn start_in(dir: Arc<TempDir>, extra: &[(&str, &str)]) -> TestNode {
             .with_name("testtone")
             .with_search_prefix(Some("testtonesearch")),
     );
-    let node = Node::build(config(&dir, extra), test_plugins(tone.clone()))
+    let node = Node::build(config(&dir, extra), test_plugins(tone.clone(), extra))
         .await
         .unwrap();
     node.restore().await;

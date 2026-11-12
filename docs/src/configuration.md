@@ -64,7 +64,7 @@ These are Cadence's settings with the `CADENCE_` prefix renamed to
 | `SPOTIFY_CLIENT_ID` / `SPOTIFY_CLIENT_SECRET` | | Spotify Web API credentials (client-credentials flow). Without them Spotify links and `spsearch:` don't resolve. Metadata only. |
 | `APPLE_MUSIC_TOKEN` | scraped | Optional fixed Apple Music developer token. Metadata only. |
 | `APPLE_MUSIC_STOREFRONT` | `us` | Apple Music catalog storefront (country code). |
-| `LYRICS_ENABLED` | `true` | Serve lyrics from lyrics.ovh on `/v1/lyrics` and `/v4/lyrics` (see [REST](api/rest.md#lyrics)). |
+| `LYRICS_ENABLED` | `true` | Serve lyrics from lyrics.ovh on `/v1/lyrics` and `/v4/lyrics` (see [REST](api/rest.md#lyrics)). With the [`genius` plugin](genius-lyrics.md) (on by default), lyrics.ovh is asked only when Genius has nothing or fails. |
 | `LYRICS_API_URL` | `https://api.lyrics.ovh/v1` | lyrics.ovh API base, for a mirror. |
 | `DEEZER_PROXY`, `SPOTIFY_PROXY`, `APPLE_MUSIC_PROXY`, `SOUNDCLOUD_PROXY`, `LYRICS_PROXY` | | Per-source HTTP(S) or SOCKS proxy. A proxy that fails falls back to a direct connection for 60 s. |
 
@@ -101,12 +101,16 @@ mirrored to another playback source and a warning is logged at startup.
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `WAVYZON_PLUGINS` | all compiled in | Comma-separated plugin names to enable, in registration order (`example,lyrics`). **Empty enables every plugin compiled into the binary** (the default build compiles in `example`, `apo` and `flowery`, cargo features `plugin-example`, `plugin-apo` and `plugin-flowery`). Naming a plugin that isn't compiled in stops the node at startup, and so does a plugin built for another `API_VERSION`. |
+| `WAVYZON_PLUGINS` | all compiled in | Comma-separated plugin names to enable, in registration order (`example,lyrics`). **Empty enables every plugin compiled into the binary** (the default build compiles in `example`, `apo`, `flowery` and `genius`, cargo features `plugin-example`, `plugin-apo`, `plugin-flowery` and `plugin-genius`). Naming a plugin that isn't compiled in stops the node at startup, and so does a plugin built for another `API_VERSION`. |
 | `WAVYZON_PLUGIN_<NAME>_<KEY>` | | Settings for one plugin. `<NAME>` is the plugin name upper-cased with `-` turned into `_`; the plugin receives `<key>` lower-cased. `WAVYZON_PLUGIN_EXAMPLE_AMPLITUDE=0.5` → `ctx.setting("amplitude") == Some("0.5")`. |
 | `WAVYZON_PLUGIN_APO_DIR` | `$WAVYZON_DATA_DIR/plugins/apo` | Presets directory of the [`apo` filter](apo.md): Equalizer APO `.txt` files and their impulse responses. A path that isn't a directory stops the node at startup. |
 | `WAVYZON_PLUGIN_FLOWERY_ENABLED` | `true` | The [Flowery TTS](flowery-tts.md) source (`ftts://`). `false` registers no source; leaving `flowery` out of `WAVYZON_PLUGINS` does not load the plugin at all. |
 | `WAVYZON_PLUGIN_FLOWERY_VOICE`, `_TRANSLATE`, `_SILENCE`, `_SPEED`, `_AUDIO_FORMAT` | Flowery's voice, `false`, `0`, `1.0`, `mp3` | Defaults for the options an `ftts://` identifier does not give ([table](flowery-tts.md#settings)). Out-of-range values stop the node at startup. |
 | `WAVYZON_PLUGIN_FLOWERY_API_URL`, `_TIMEOUT_MS`, `_PROXY` | `https://api.flowery.pw/v1/tts`, `30000`, none | Flowery endpoint, wait for its answer, optional proxy. |
+| `WAVYZON_PLUGIN_GENIUS_ENABLED` | `true` | [Genius lyrics](genius-lyrics.md), asked before lyrics.ovh. `false` = lyrics.ovh only. |
+| `WAVYZON_PLUGIN_GENIUS_ACCESS_TOKEN` | none | Genius Client Access Token (<https://genius.com/api-clients>): searches through the official API. Recommended. |
+| `WAVYZON_PLUGIN_GENIUS_CLIENT_ID`, `_CLIENT_SECRET` | none | Instead of a token: exchanged for one (`client_credentials`). Both or neither, or the node stops at startup. Without any key, genius.com's public search is used. |
+| `WAVYZON_PLUGIN_GENIUS_TIMEOUT_MS`, `_PROXY`, `_API_URL`, `_WEB_URL` | `10000`, none, `https://api.genius.com`, `https://genius.com` | Bound of a whole Genius lookup, optional proxy, bases (mirrors, tests). |
 
 
 ## Example `.env`

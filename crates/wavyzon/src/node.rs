@@ -49,6 +49,7 @@ impl Node {
         let sources = Sources::builder(&config.sources)
             .context("building sources")?
             .plugins(registry.sources().iter().cloned())
+            .lyrics_providers(registry.lyrics_providers().iter().cloned())
             .build();
 
         let fingerprints = Arc::new(Fingerprints::new());

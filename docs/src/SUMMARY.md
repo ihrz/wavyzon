@@ -24,6 +24,7 @@
   - [Equalizer APO](apo.md)
 - [Sources](sources.md)
   - [Flowery TTS](flowery-tts.md)
+  - [Genius lyrics](genius-lyrics.md)
 
 # Extending Wavyzon
 

@@ -14,13 +14,14 @@ and implements one trait, `Plugin`. It can add:
 The complete, tested example used throughout this page lives in
 [`plugins/wavyzon-plugin-example`](https://gitlab.com/ihrz/wavyzon/-/tree/main/plugins/wavyzon-plugin-example).
 
-Two real plugins ship with the node and are on by default, each also a
+Three real plugins ship with the node and are on by default, each also a
 model to copy:
 
 | Plugin | Adds | Docs |
 | --- | --- | --- |
 | [`apo`](https://gitlab.com/ihrz/wavyzon/-/tree/main/plugins/wavyzon-plugin-apo) | a filter (`pluginFilters.apo`) and routes | [Equalizer APO](apo.md) |
 | [`flowery`](https://gitlab.com/ihrz/wavyzon/-/tree/main/plugins/wavyzon-plugin-flowery) | a playable source for `ftts://` links, streamed with `wavyzon-sources`' shared `HttpClient` | [Flowery TTS](flowery-tts.md) |
+| [`genius`](https://gitlab.com/ihrz/wavyzon/-/tree/main/plugins/wavyzon-plugin-genius) | a lyrics provider asked before lyrics.ovh | [Genius lyrics](genius-lyrics.md) |
 
 ## How plugins are loaded
 
@@ -600,6 +601,27 @@ async fn reset(State(shared): State<Arc<Shared>>) -> Json<Value> {
 curl -H "Authorization: $WAVYZON_PASSWORD" localhost:2333/v1/plugins/example/
 curl -X POST -H "Authorization: $WAVYZON_PASSWORD" localhost:2333/v1/plugins/example/reset
 ```
+
+## 6. Lyrics providers
+
+```rust
+#[async_trait]
+pub trait LyricsProvider: Send + Sync + 'static {
+    fn name(&self) -> &str;
+    async fn lyrics(&self, track: &Track) -> Result<Option<Lyrics>, Failure>;
+}
+
+reg.lyrics(Arc::new(MyLyrics));
+```
+
+- `/v1/lyrics` and `/v4/lyrics` ask plugin providers first, in plugin order,
+  then the built-in lyrics.ovh client (`LYRICS_ENABLED`); the first
+  `Ok(Some(_))` answers. `Ok(None)` and errors fall through to the next one
+  (errors are logged and counted in `wavyzon_lyrics_plugin_total`).
+- `Lyrics::provider` is shown to clients as `provider`.
+- Registering a provider turns the lyrics routes on (and `lavalyrics-plugin`
+  in `/v4/info`) even with `LYRICS_ENABLED=false`.
+- Cache your answers: the node does not. See the `genius` plugin.
 
 ## Putting it together
 

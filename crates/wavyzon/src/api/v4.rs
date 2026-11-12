@@ -57,7 +57,7 @@ async fn info(State(api): St) -> axum::response::Response {
         .map(|p| json!({ "name": p.name, "version": p.version }))
         .collect();
     // The lyrics routes speak LavaLyrics' API, which clients detect by name.
-    if api.sources.lyrics().is_some() {
+    if api.sources.lyrics_enabled() {
         plugins.push(json!({ "name": super::lyrics::PLUGIN_NAME, "version": VERSION }));
     }
     ok_json(json!({

@@ -62,6 +62,7 @@ adds:
 | Copy working code for my bot | [Examples](examples.md) |
 | Use my Equalizer APO presets (EQ, reverb…) | [Equalizer APO](apo.md) |
 | Make the bot speak (text-to-speech, `ftts://`) | [Flowery TTS](flowery-tts.md) |
+| Show lyrics (Genius, then lyrics.ovh) | [Genius lyrics](genius-lyrics.md) |
 | Run a node | [Installation](installation.md), then [Configuration](configuration.md) |
 | Point an existing Lavalink bot at Wavyzon | [Lavalink v4 compatibility](lavalink.md) |
 | Write a client against the native protocol | [REST API](api/rest.md) and [WebSocket & events](api/websocket.md) |

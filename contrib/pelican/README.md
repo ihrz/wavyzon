@@ -61,7 +61,7 @@ Every setting the egg exposes maps 1:1 to the variables in `.env.example`
 Differences from the Cadence egg: `CADENCE_*` became `WAVYZON_*`; the
 libdave/godave versions are gone; there are new variables for the playback
 sources, the HTTP and local sources, plugins, the shared cache, crossfade,
-lyrics and the log format (`pretty` by default, so the console stays
+lyrics (Genius, then lyrics.ovh), Flowery text-to-speech and the log format (`pretty` by default, so the console stays
 readable).
 
 ## Regenerate

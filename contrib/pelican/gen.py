@@ -146,7 +146,26 @@ variables = [
         "Fade into the queued nextTrack before the current track ends (0-12000, 0 = strict gapless).",
         ["required", "integer", "between:0,12000"]),
     var("Lyrics (lyrics.ovh)", "LYRICS_ENABLED", "true",
-        "Serve lyrics from lyrics.ovh on /v4/lyrics (LavaLyrics API).", BOOL),
+        "Serve lyrics from lyrics.ovh on /v4/lyrics (LavaLyrics API). With Genius on, asked only when Genius has none.",
+        BOOL),
+    var("Genius lyrics", "WAVYZON_PLUGIN_GENIUS_ENABLED", "true",
+        "Ask Genius for lyrics before lyrics.ovh (Genius has none or fails -> lyrics.ovh). false = lyrics.ovh only.",
+        BOOL),
+    var("Genius access token", "WAVYZON_PLUGIN_GENIUS_ACCESS_TOKEN", "",
+        "Recommended: Client Access Token from https://genius.com/api-clients. Without a key, genius.com's public "
+        "search is used, which Genius often refuses from servers (lyrics.ovh then answers).",
+        ["nullable", "string", "max:200"]),
+    var("Genius client ID", "WAVYZON_PLUGIN_GENIUS_CLIENT_ID", "",
+        "Instead of the access token: API client id, exchanged for a token with the client secret. Set both or neither.",
+        ["nullable", "string", "max:200"]),
+    var("Genius client secret", "WAVYZON_PLUGIN_GENIUS_CLIENT_SECRET", "",
+        "API client secret, with the client id.", ["nullable", "string", "max:200"]),
+    var("Genius timeout (ms)", "WAVYZON_PLUGIN_GENIUS_TIMEOUT_MS", "10000",
+        "Bound of a whole Genius lookup (search + song page) before lyrics.ovh is asked (1000-60000).",
+        ["required", "integer", "between:1000,60000"]),
+    var("Flowery TTS", "WAVYZON_PLUGIN_FLOWERY_ENABLED", "true",
+        "Text-to-speech source for ftts:// identifiers (LavaSrc-compatible, no API key). false = no ftts source.",
+        BOOL),
 ]
 for i, v in enumerate(variables, 1):
     v["sort"] = i
